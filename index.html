@@ -94,11 +94,10 @@ swapCd:0
 };
 
 function pDino(){ return DINOS[G.player.dk]; }
-// HP cap: 10 levels * 32 = 320 bonus; raptor base 80 + 320 = 400 total
 function pMaxHp(){ return pDino().hp + G.player.upg.hp*32; }
-// ATK: each level +4 damage
 function pAtk(){ return pDino().atk + G.player.upg.atk*4; }
 function pSpd(){ return pDino().spd + G.player.upg.spd*0.5; }
+
 // ── HELPERS ──
 function rr(x,y,w,h,r,fill,stroke,sw){
 ctx.beginPath();
@@ -384,7 +383,7 @@ G.btns=[];
 const W=canvas.width, H=canvas.height;
 ctx.fillStyle='rgba(0,0,0,0.82)';ctx.fillRect(0,0,W,52);
 ctx.strokeStyle='rgba(100,180,255,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,52);ctx.lineTo(W,52);ctx.stroke();
-// Bucket counter
+// Bucket counter (TAP HERE FOR CHEATS)
 ctx.fillStyle='#aaddff';ctx.shadowColor='#55aaff';ctx.shadowBlur=8;
 ctx.font='bold 22px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 ctx.fillText(`🪣 ${G.wheat}`,16,26);ctx.shadowBlur=0;
@@ -392,7 +391,7 @@ ctx.fillText(`🪣 ${G.wheat}`,16,26);ctx.shadowBlur=0;
 const d=pDino();
 ctx.fillStyle=RARITY_COLOR[d.rarity];ctx.shadowColor=RARITY_COLOR[d.rarity];ctx.shadowBlur=10;
 ctx.font='bold 15px Courier New';ctx.textAlign='center';
-ctx.fillText(`${d.em} ${d.name} [${d.rarity}]`,W/2,26);ctx.shadowBlur=0;
+ctx.fillText(`${d.em} ${d.name}[${d.rarity}]`,W/2,26);ctx.shadowBlur=0;
 // HP bar
 const pct=G.playerHp/pMaxHp();
 const hcol=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
@@ -899,10 +898,30 @@ drawIndex();
 drawShop();updateDrawParticles();
 }
 }
-// ── INPUT ──
+// ── INPUT & CHEATS ──
+function doCheatPrompt(){
+const code = window.prompt("Secret Developer Console:\nEnter command:");
+if(!code) return;
+const c = code.trim().toLowerCase();
+if(c === 'dev_money') {
+G.wheat += 999999;
+alert("Cheat Activated: +999,999 Buckets");
+} else if(c === 'dev_dinos') {
+for(let k in DINOS) G.discovered[k] = true;
+alert("Cheat Activated: All Dinos Unlocked");
+} else if(c === 'dev_god') {
+G.player.upg.hp = 99;
+G.player.upg.atk = 99;
+G.player.upg.spd = 99;
+G.playerHp = pMaxHp();
+alert("Cheat Activated: GOD MODE");
+}
+}
+
 window.addEventListener('keydown',e=>{
 G.keys[e.key]=true;G.keys[e.key.toLowerCase()]=true;
 if(G.state==='intro') startGame();
+if(e.key==='`' || e.key==='~') doCheatPrompt();
 e.preventDefault();
 });
 window.addEventListener('keyup',e=>{
@@ -917,6 +936,8 @@ const r=canvas.getBoundingClientRect();
 const cx=e.clientX-r.left, cy=e.clientY-r.top;
 if(G.state==='intro'){startGame();return;}
 for(const b of G.btns){if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){b.act();return;}}
+// Cheat Touch Trigger: Top left corner (Over the 🪣 text)
+if(G.state==='world' && cx<80 && cy<50) { doCheatPrompt(); return; }
 });
 canvas.addEventListener('touchstart',e=>{
 e.preventDefault();
@@ -925,6 +946,8 @@ const t=e.touches[0];
 const tx=t.clientX-r.left, ty=t.clientY-r.top;
 if(G.state==='intro'){startGame();return;}
 for(const b of G.btns){if(tx>=b.x&&tx<=b.x+b.w&&ty>=b.y&&ty<=b.y+b.h){b.act();return;}}
+// Cheat Touch Trigger: Top left corner (Over the 🪣 text)
+if(G.state==='world' && tx<80 && ty<50) { doCheatPrompt(); return; }
 if(G.state==='world'){G.joy.on=true;G.joy.sx=tx;G.joy.sy=ty;G.joy.dx=0;G.joy.dy=0;}
 },{passive:false});
 canvas.addEventListener('touchmove',e=>{
