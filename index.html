@@ -618,6 +618,12 @@ G.player.dk=key;
 const newMax = pMaxHp();
 G.playerHp = Math.min(oldHp, newMax);
 G.swapCd = 3600;
+const ttx = Math.floor(G.player.x/TS);
+const tty = Math.floor(G.player.y/TS);
+if(worldMap[tty] && worldMap[tty][ttx] === 2 && !['spinosaurus','pterodactyl','megalodon'].includes(key)){
+G.player.x = WS/2*TS;
+G.player.y = WS/2*TS;
+}
 });
 else{ctx.fillStyle='#44ff44';ctx.font='bold 9px Courier New';ctx.textBaseline='middle';ctx.fillText('✓ ACTIVE',cx,cy+72);}
 }
@@ -826,7 +832,7 @@ w.anim++;
 
 // Prevent non-swimmers from walking on water
 const wtx=Math.floor(w.x/TS), wty=Math.floor(w.y/TS);
-const wCanSwim = ['spinosaurus','pterodactyl','megalodon'].includes(w.key);
+const wCanSwim =['spinosaurus','pterodactyl','megalodon'].includes(w.key);
 if(wtx>=0&&wty>=0&&wtx<WS&&wty<WS && worldMap[wty][wtx]===2 && !wCanSwim){
 w.x -= w.dx || 0;
 w.y -= w.dy || 0;
