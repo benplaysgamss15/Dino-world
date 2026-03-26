@@ -40,8 +40,8 @@ brachiosaurus:{name:'Brachiosaurus', rarity:'Rare', col:'#5a9a5a',acc:'#3a7a3a',
 spinosaurus: {name:'Spinosaurus', rarity:'Epic', col:'#4a6a9a',acc:'#2a4a7a',hp:200,atk:48,spd:3.8,sz:38,sp:0.028,rw:76, em:'🦖'},
 pterodactyl: {name:'Pterodactyl', rarity:'Epic', col:'#9a7a5a',acc:'#7a5a3a',hp:130,atk:52,spd:6.0,sz:30,sp:0.022,rw:84, em:'🦅'},
 carnotaurus: {name:'Carnotaurus', rarity:'Epic', col:'#9a3a4a',acc:'#7a1a2a',hp:175,atk:58,spd:5.0,sz:34,sp:0.018,rw:96, em:'🦖'},
-indoraptor: {name:'Indoraptor', rarity:'Legendary', col:'#1a1020',acc:'#3a1040',hp:280,atk:72,spd:5.5,sz:36,sp:0.007,rw:180, em:'🦖'},
-therizinosaurus:{name:'Therizinosaurus',rarity:'Legendary',col:'#2a5a4a',acc:'#1a3a2a',hp:320,atk:62,spd:2.8,sz:44,sp:0.004,rw:220,em:'🦕'},
+indoraptor: {name:'Indoraptor', rarity:'Legendary', col:'#1a1020',acc:'#3a1040',hp:280,atk:72,spd:5.5,sz:36,sp:0.035,rw:180, em:'🦖'},
+therizinosaurus:{name:'Therizinosaurus',rarity:'Legendary',col:'#2a5a4a',acc:'#1a3a2a',hp:320,atk:62,spd:2.8,sz:44,sp:0.025,rw:220,em:'🦕'},
 megalodon: {name:'Megalodon', rarity:'Boss', col:'#1a3060',acc:'#0a1540',hp:600,atk:85,spd:3.5,sz:64,sp:0, rw:500,em:'🦈'}
 };
 
@@ -94,8 +94,10 @@ swapCd:0
 };
 
 function pDino(){ return DINOS[G.player.dk]; }
-function pMaxHp(){ return pDino().hp + G.player.upg.hp*20; }
-function pAtk(){ return pDino().atk + G.player.upg.atk*8; }
+// HP cap: 10 levels * 32 = 320 bonus; raptor base 80 + 320 = 400 total
+function pMaxHp(){ return pDino().hp + G.player.upg.hp*32; }
+// ATK: each level +4 damage
+function pAtk(){ return pDino().atk + G.player.upg.atk*4; }
 function pSpd(){ return pDino().spd + G.player.upg.spd*0.5; }
 // ── HELPERS ──
 function rr(x,y,w,h,r,fill,stroke,sw){
@@ -185,18 +187,18 @@ ctx.fillStyle='#111';ctx.beginPath();ctx.arc(23*s,-8*s+bob,1.2*s,0,Math.PI*2);ct
 // Body / torso
 ctx.fillStyle=cBody;ctx.beginPath();ctx.ellipse(0,0+bob,21*s,13*s,0,0,Math.PI*2);ctx.fill();
 if(key==='brachiosaurus'){
-  ctx.fillStyle=cNeck;ctx.beginPath();
-  ctx.moveTo(3*s,-3*s+bob);ctx.quadraticCurveTo(20*s,-20*s+bob,15*s,-38*s+bob);
-  ctx.lineTo(22*s,-38*s+bob);ctx.quadraticCurveTo(27*s,-20*s+bob,10*s,-3*s+bob);ctx.fill();
-  ctx.fillStyle=cHead;ctx.beginPath();ctx.ellipse(18*s,-41*s+bob,8*s,5*s,-0.4,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(23*s,-44*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(23*s,-44*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cNeck;ctx.beginPath();
+ctx.moveTo(3*s,-3*s+bob);ctx.quadraticCurveTo(20*s,-20*s+bob,15*s,-38*s+bob);
+ctx.lineTo(22*s,-38*s+bob);ctx.quadraticCurveTo(27*s,-20*s+bob,10*s,-3*s+bob);ctx.fill();
+ctx.fillStyle=cHead;ctx.beginPath();ctx.ellipse(18*s,-41*s+bob,8*s,5*s,-0.4,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(23*s,-44*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#111';ctx.beginPath();ctx.arc(23*s,-44*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
 } else {
-  ctx.fillStyle=cNeck;ctx.beginPath();ctx.ellipse(18*s,-8*s+bob,10*s,7*s,-0.35,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle=cHead;ctx.beginPath();
-  ctx.moveTo(26*s,-5*s+bob);ctx.lineTo(32*s,-9*s+bob);ctx.lineTo(32*s,-4*s+bob);ctx.fill();
-  ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(22*s,-11*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(22.5*s,-11*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cNeck;ctx.beginPath();ctx.ellipse(18*s,-8*s+bob,10*s,7*s,-0.35,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cHead;ctx.beginPath();
+ctx.moveTo(26*s,-5*s+bob);ctx.lineTo(32*s,-9*s+bob);ctx.lineTo(32*s,-4*s+bob);ctx.fill();
+ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(22*s,-11*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#111';ctx.beginPath();ctx.arc(22.5*s,-11*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
 }
 // Tail
 ctx.fillStyle=cTail;ctx.beginPath();
@@ -208,53 +210,53 @@ const la=Math.sin(af*0.22)*6;
 ctx.fillRect(-5*s,8*s+bob,5.5*s,(13+la)*s);
 ctx.fillRect(5*s,8*s+bob,5.5*s,(13-la)*s);
 if(d.sz>=28){
-  ctx.fillRect(-14*s,8*s+bob,5.5*s,(13-la)*s);
-  ctx.fillRect(-24*s,8*s+bob,5.5*s,(13+la)*s);
+ctx.fillRect(-14*s,8*s+bob,5.5*s,(13-la)*s);
+ctx.fillRect(-24*s,8*s+bob,5.5*s,(13+la)*s);
 }
 // Arms
 if(['trex','carnotaurus','indoraptor','dilophosaurus'].includes(key)){
-  ctx.fillStyle=cLegs;
-  ctx.fillRect(10*s,-2*s+bob,3*s,8*s);ctx.fillRect(12*s,5*s+bob,4*s,3*s);
+ctx.fillStyle=cLegs;
+ctx.fillRect(10*s,-2*s+bob,3*s,8*s);ctx.fillRect(12*s,5*s+bob,4*s,3*s);
 }
 // Special features
 if(key==='stegosaurus'){
-  ctx.fillStyle='#d09040';
-  for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7*s,-5*s+bob);ctx.lineTo(i*7*s-3*s,-20*s+bob);ctx.lineTo(i*7*s+3*s,-20*s+bob);ctx.fill();}
-  ctx.fillStyle='#aa3030';ctx.fillRect(-28*s,5*s+bob,4*s,4*s);ctx.fillRect(-32*s,3*s+bob,4*s,4*s);
+ctx.fillStyle='#d09040';
+for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7*s,-5*s+bob);ctx.lineTo(i*7*s-3*s,-20*s+bob);ctx.lineTo(i*7*s+3*s,-20*s+bob);ctx.fill();}
+ctx.fillStyle='#aa3030';ctx.fillRect(-28*s,5*s+bob,4*s,4*s);ctx.fillRect(-32*s,3*s+bob,4*s,4*s);
 }
 if(key==='ankylosaurus'){
-  ctx.fillStyle='#aa8030';ctx.beginPath();ctx.ellipse(-45*s,6*s+bob,10*s,8*s,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#aa8030';ctx.beginPath();ctx.ellipse(-45*s,6*s+bob,10*s,8*s,0,0,Math.PI*2);ctx.fill();
 }
 if(key==='triceratops'){
-  ctx.fillStyle='#ccc';
-  ctx.fillRect(20*s,-14*s+bob,3*s,10*s);ctx.fillRect(15*s,-18*s+bob,3*s,14*s);ctx.fillRect(25*s,-10*s+bob,3*s,6*s);
+ctx.fillStyle='#ccc';
+ctx.fillRect(20*s,-14*s+bob,3*s,10*s);ctx.fillRect(15*s,-18*s+bob,3*s,14*s);ctx.fillRect(25*s,-10*s+bob,3*s,6*s);
 }
 if(key==='spinosaurus'){
-  ctx.fillStyle='#7090cc';
-  for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7*s,-5*s+bob);ctx.lineTo(i*7*s-2*s,-28*s+bob);ctx.lineTo(i*7*s+2*s,-28*s+bob);ctx.fill();}
+ctx.fillStyle='#7090cc';
+for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*7*s,-5*s+bob);ctx.lineTo(i*7*s-2*s,-28*s+bob);ctx.lineTo(i*7*s+2*s,-28*s+bob);ctx.fill();}
 }
 if(key==='dilophosaurus'){
-  ctx.fillStyle='#cc6020';ctx.beginPath();ctx.ellipse(18*s,-14*s+bob,8*s,4*s,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#cc6020';ctx.beginPath();ctx.ellipse(18*s,-14*s+bob,8*s,4*s,0,0,Math.PI*2);ctx.fill();
 }
 if(key==='parasaurolophus'){
-  ctx.fillStyle='#cc6030';ctx.beginPath();
-  ctx.moveTo(15*s,-10*s+bob);ctx.quadraticCurveTo(5*s,-30*s+bob,-10*s,-20*s+bob);
-  ctx.lineTo(-8*s,-16*s+bob);ctx.quadraticCurveTo(7*s,-22*s+bob,16*s,-8*s+bob);ctx.fill();
+ctx.fillStyle='#cc6030';ctx.beginPath();
+ctx.moveTo(15*s,-10*s+bob);ctx.quadraticCurveTo(5*s,-30*s+bob,-10*s,-20*s+bob);
+ctx.lineTo(-8*s,-16*s+bob);ctx.quadraticCurveTo(7*s,-22*s+bob,16*s,-8*s+bob);ctx.fill();
 }
 if(d.rarity==='Legendary'){
-  ctx.shadowColor=RARITY_COLOR.Legendary;ctx.shadowBlur=25;
-  ctx.strokeStyle='rgba(255,170,0,0.5)';ctx.lineWidth=2;ctx.beginPath();
-  ctx.ellipse(0,0+bob,23*s,15*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+ctx.shadowColor=RARITY_COLOR.Legendary;ctx.shadowBlur=25;
+ctx.strokeStyle='rgba(255,170,0,0.5)';ctx.lineWidth=2;ctx.beginPath();
+ctx.ellipse(0,0+bob,23*s,15*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 }
 if(d.rarity==='Epic'){
-  ctx.shadowColor=RARITY_COLOR.Epic;ctx.shadowBlur=18;
-  ctx.strokeStyle='rgba(200,68,255,0.4)';ctx.lineWidth=1.5;ctx.beginPath();
-  ctx.ellipse(0,0+bob,23*s,15*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+ctx.shadowColor=RARITY_COLOR.Epic;ctx.shadowBlur=18;
+ctx.strokeStyle='rgba(200,68,255,0.4)';ctx.lineWidth=1.5;ctx.beginPath();
+ctx.ellipse(0,0+bob,23*s,15*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 }
 if(key==='indoraptor'){
-  ctx.fillStyle='rgba(180,0,255,0.3)';ctx.beginPath();ctx.ellipse(0,0+bob,20*s,12*s,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#ffff00';
-  for(let i=0;i<3;i++){ctx.fillRect((-6+i*6)*s,-6*s+bob,2.5*s,12*s);}
+ctx.fillStyle='rgba(180,0,255,0.3)';ctx.beginPath();ctx.ellipse(0,0+bob,20*s,12*s,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffff00';
+for(let i=0;i<3;i++){ctx.fillRect((-6+i*6)*s,-6*s+bob,2.5*s,12*s);}
 }
 }
 ctx.restore();
@@ -519,12 +521,9 @@ function doAttack(){
 const b=G.battle;
 if(b.turn!=='player'||b.anim||b.res) return;
 b.anim=true;
+// Each ATK level adds +4 damage (cap at level 10 = +40 bonus)
 const atkLv = G.player.upg.atk;
-let dmg = 20;
-if(atkLv >= 1) dmg = 23;
-if(atkLv >= 2) dmg = 26;
-if(atkLv >= 3) dmg = 30;
-if(atkLv >= 4) dmg = 35;
+const dmg = 20 + atkLv * 4;
 b.ehp=Math.max(0,b.ehp-dmg);b.eshake=20;
 b.dnums.push({x:canvas.width*0.67,y:canvas.height*0.37,val:dmg,col:'#ff4444',life:60});
 b.log.unshift(`You attack for ${dmg} dmg!`);if(b.log.length>5)b.log.pop();
@@ -613,12 +612,12 @@ if(found){
 ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx-28,cy+45,56,13);
 ctx.fillStyle=RARITY_COLOR[dn.rarity];ctx.font='8px Courier New';ctx.fillText(dn.rarity,cx,cy+58);
 if(!isCur) btn(cx-32,cy+61,64,22,'Equip','#1a3a88','#fff',()=>{
-  if(G.swapCd>0) return;
-  const oldHp = G.playerHp;
-  G.player.dk=key;
-  const newMax = pMaxHp();
-  G.playerHp = Math.min(oldHp, newMax);
-  G.swapCd = 3600;
+if(G.swapCd>0) return;
+const oldHp = G.playerHp;
+G.player.dk=key;
+const newMax = pMaxHp();
+G.playerHp = Math.min(oldHp, newMax);
+G.swapCd = 3600;
 });
 else{ctx.fillStyle='#44ff44';ctx.font='bold 9px Courier New';ctx.textBaseline='middle';ctx.fillText('✓ ACTIVE',cx,cy+72);}
 }
@@ -648,8 +647,8 @@ ctx.fillText('🛒 DINO SHOP',W/2,26);ctx.shadowBlur=0;
 ctx.fillStyle='#aaddff';ctx.font='bold 18px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 ctx.fillText(`🪣 ${G.wheat}`,16,26);
 const upgs=[
-{k:'hp', label:'HP Boost', desc:'+20 Max HP', icon:'❤️', base:25,col:'#aa2222'},
-{k:'atk',label:'Atk Power', desc:'+8 Attack', icon:'⚔️', base:30,col:'#aa6622'},
+{k:'hp', label:'HP Boost', desc:'+32 Max HP', icon:'❤️', base:25,col:'#aa2222'},
+{k:'atk',label:'Atk Power', desc:'+4 Attack', icon:'⚔️', base:30,col:'#aa6622'},
 {k:'spd',label:'Speed Up', desc:'+0.5 Speed', icon:'⚡', base:20,col:'#2244aa'}
 ];
 const cw2=Math.min(240,Math.floor((W-60)/3));
@@ -658,24 +657,36 @@ const tw=upgs.length*cw2+(upgs.length-1)*18;
 const sx2=(W-tw)/2;
 upgs.forEach((upg,i)=>{
 const lv=G.player.upg[upg.k];
+// HP and ATK are capped at level 10; SPD is uncapped
+const maxLv=(upg.k==='hp'||upg.k==='atk')?10:999;
+const maxed=lv>=maxLv;
 const cost=upg.base+lv*15;
-const can=G.wheat>=cost;
+const can=!maxed&&G.wheat>=cost;
 const x=sx2+i*(cw2+18), y=65;
-rr(x,y,cw2,ch,12,'rgba(18,10,4,0.97)',can?upg.col:'#2a2020',2);
+rr(x,y,cw2,ch,12,'rgba(18,10,4,0.97)',maxed?'#886600':can?upg.col:'#2a2020',2);
 ctx.font='36px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(upg.icon,x+cw2/2,y+14);
 ctx.fillStyle='#fff';ctx.font='bold 15px Courier New';ctx.textBaseline='top';ctx.fillText(upg.label,x+cw2/2,y+62);
-ctx.fillStyle='#ffd700';ctx.font='bold 13px Courier New';ctx.fillText(`Lv ${lv}`,x+cw2/2,y+83);
+ctx.fillStyle=maxed?'#ffaa00':'#ffd700';ctx.font='bold 13px Courier New';
+ctx.fillText(maxed?`Lv ${lv} ✓`:`Lv ${lv}`,x+cw2/2,y+83);
 ctx.fillStyle='#aaa';ctx.font='11px Courier New';ctx.fillText(upg.desc,x+cw2/2,y+104);
+if(maxed){
+ctx.fillStyle='#ffaa00';ctx.font='bold 13px Courier New';ctx.fillText('MAX UPGRADE',x+cw2/2,y+126);
+} else {
 ctx.fillStyle=can?'#aaddff':'#664422';ctx.font='bold 13px Courier New';ctx.fillText(`Cost: 🪣 ${cost}`,x+cw2/2,y+126);
-btn(x+16,y+154,cw2-32,42,'UPGRADE',can?upg.col:'#2a2020',can?'#fff':'#665',()=>{
-if(G.wheat>=cost){
+}
+btn(x+16,y+154,cw2-32,42,maxed?'MAX UPGRADE':'UPGRADE',
+maxed?'#553300':can?upg.col:'#2a2020',
+maxed?'#ffaa00':can?'#fff':'#665',
+()=>{
+if(!maxed&&G.wheat>=cost){
 G.wheat-=cost;G.player.upg[upg.k]++;
-if(upg.k==='hp') G.playerHp+=20;
+if(upg.k==='hp') G.playerHp+=32;
 spawnParticles(x+cw2/2,y+175,'#55ccff',10);
 }
 });
-for(let l=0;l<Math.min(lv,9);l++){
-ctx.fillStyle=upg.col;ctx.beginPath();ctx.arc(x+14+l*13,y+ch-12,4,0,Math.PI*2);ctx.fill();
+// Level dots (up to 10)
+for(let l=0;l<Math.min(lv,10);l++){
+ctx.fillStyle=upg.col;ctx.beginPath();ctx.arc(x+9+l*11,y+ch-12,4,0,Math.PI*2);ctx.fill();
 }
 });
 // Heal card
@@ -817,9 +828,9 @@ w.anim++;
 const wtx=Math.floor(w.x/TS), wty=Math.floor(w.y/TS);
 const wCanSwim = ['spinosaurus','pterodactyl','megalodon'].includes(w.key);
 if(wtx>=0&&wty>=0&&wtx<WS&&wty<WS && worldMap[wty][wtx]===2 && !wCanSwim){
-  w.x -= w.dx || 0;
-  w.y -= w.dy || 0;
-  w.dx = w.dy = 0;
+w.x -= w.dx || 0;
+w.y -= w.dy || 0;
+w.dx = w.dy = 0;
 }
 }
 // Encounter check
@@ -926,5 +937,6 @@ G.playerHp = pMaxHp();
 function loop(){update();render();requestAnimationFrame(loop);}
 loop();
 </script>
+
 </body>
 </html>
