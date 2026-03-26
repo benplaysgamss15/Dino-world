@@ -573,8 +573,8 @@ ctx.fillStyle='#6699ff';ctx.shadowColor='#4477ff';ctx.shadowBlur=15;
 ctx.font='bold 24px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.fillText('📘 DINO INDEX',W/2,26);ctx.shadowBlur=0;
 const ak=Object.keys(DINOS);
-ctx.fillStyle='#888';ctx.font='12px Courier New';ctx.textAlign='right';ctx.textBaseline='middle';
-ctx.fillText(`${ak.filter(k=>G.discovered[k]).length}/${ak.length} Discovered`,W-16,26);
+ctx.fillStyle='#888';ctx.font='12px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
+ctx.fillText(`${ak.filter(k=>G.discovered[k]).length}/${ak.length} Discovered`,20,26);
 const cw=Math.min(145,Math.floor((W-30)/Math.max(1,Math.floor((W-30)/145))));
 const cols=Math.max(1,Math.floor((W-30)/cw));
 const rows=Math.max(1,Math.floor((H-90)/130));
@@ -900,4 +900,3 @@ loop();
 </script>
 </body>
 </html>
-```
