@@ -53,9 +53,9 @@ iguanodon: {name:'Iguanodon', rarity:'Rare', col:'#8fbc8f',acc:'#2f4f4f',hp:180,
 baryonyx: {name:'Baryonyx', rarity:'Rare', col:'#4682b4',acc:'#191970',hp:200,atk:45,spd:4.0,sz:32,sp:0.06, rw:45, em:'🦖', lvl:2},
 diplodocus: {name:'Diplodocus', rarity:'Rare', col:'#2e8b57',acc:'#006400',hp:300,atk:20,spd:1.2,sz:48,sp:0.05, rw:50, em:'🦕', lvl:2},
 mosasaurus: {name:'Mosasaurus', rarity:'Epic', col:'#008b8b',acc:'#000080',hp:250,atk:60,spd:4.5,sz:44,sp:0.03, rw:90, em:'🦈', lvl:2},
-giganotosaurus: {name:'Giganotosaurus',rarity:'Legendary',col:'#cd5c5c',acc:'#8b0000',hp:350,atk:75,spd:4.2,sz:40,sp:0.02,rw:200,em:'🦖', lvl:2},
-quetzalcoatlus: {name:'Quetzalcoatlus',rarity:'Legendary',col:'#d2b48c',acc:'#8b4513',hp:220,atk:68,spd:6.5,sz:38,sp:0.02,rw:220,em:'🦅', lvl:2},
-indominus: {name:'Indominus Rex', rarity:'Boss', col:'#f8f8ff',acc:'#c0c0c0',hp:800,atk:95,spd:4.5,sz:55,sp:0, rw:1000,em:'🦖', lvl:2}
+giganotosaurus: {name:'Giganotosaurus',rarity:'Legendary',col:'#cd5c5c',acc:'#8b0000',hp:350,atk:75,spd:4.2,sz:40,sp:0.05,rw:200,em:'🦖', lvl:2},
+quetzalcoatlus: {name:'Quetzalcoatlus',rarity:'Legendary',col:'#d2b48c',acc:'#8b4513',hp:220,atk:68,spd:6.5,sz:38,sp:0.05,rw:220,em:'🦅', lvl:2},
+indominus: {name:'Indominus Rex', rarity:'Boss', col:'#f8f8ff',acc:'#c0c0c0',hp:600,atk:85,spd:4.5,sz:55,sp:0, rw:1000,em:'🦖', lvl:2}
 };
 
 // ── WORLD GEN ──
@@ -723,6 +723,8 @@ let dmg=Math.max(1,en.atk+Math.floor(Math.random()*10)-5);
 
 // Specific constraint for Megalodon (50 - 60)
 if(b.ek === 'megalodon') dmg = 50 + Math.floor(Math.random() * 11);
+// Specific constraint for Indominus Rex (70 - 100)
+else if(b.ek === 'indominus') dmg = 70 + Math.floor(Math.random() * 31);
 
 b.php=Math.max(0,b.php-dmg);G.playerHp=b.php;b.pshake=18;
 b.dnums.push({x:canvas.width*0.28,y:canvas.height*0.52,val:dmg,col:'#ff8844',life:60});
@@ -957,7 +959,8 @@ G.wilds =[];
 const keys=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
 for(let i=0;i<36;i++){
 let chosen=keys[0], acc=0;
-const rng=Math.random();
+const tot=keys.reduce((sum,k)=>sum+DINOS[k].sp, 0);
+const rng=Math.random()*tot;
 for(const k of keys){acc+=DINOS[k].sp;if(rng<acc){chosen=k;break;}}
 for(let attempt=0;attempt<20;attempt++){
 const tx=Math.floor(Math.random()*WS), ty=Math.floor(Math.random()*WS);
@@ -1105,7 +1108,8 @@ if(wasBoss) setTimeout(spawnMega,90000);
 else setTimeout(()=>{
 const ks2=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
 let ch=ks2[0],ac2=0;
-const r2=Math.random();
+const tot2=ks2.reduce((sum,k)=>sum+DINOS[k].sp, 0);
+const r2=Math.random()*tot2;
 for(const k of ks2){ac2+=DINOS[k].sp;if(r2<ac2){ch=k;break;}}
 for(let att=0;att<20;att++){
 const tx2=Math.floor(Math.random()*WS),ty2=Math.floor(Math.random()*WS);
