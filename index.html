@@ -92,7 +92,11 @@ swapCd:0,
 volcanoTimer: 10800, // 3 mins (60fps * 180s)
 volcanoActive: 0,
 camShake: 0,
-hazards:[]
+hazards:[],
+
+// Megalodon Level 1 events
+megaTimer: 3600, // 1 min (60fps * 60s)
+megaOnLand: false
 };
 
 function generateWorld(){
@@ -895,8 +899,8 @@ const bossKey = G.level === 1 ? 'megalodon' : 'indominus';
 for(let attempt=0;attempt<300;attempt++){
 const tx=Math.floor(Math.random()*WS), ty=Math.floor(Math.random()*WS);
 const isWater = worldMap[ty]&&worldMap[ty][tx]===2;
-// Level 1: Megalodon in water | Level 2: Indominus on land
-if((G.level===1 && isWater) || (G.level===2 && !isWater)){
+// Level 1: Megalodon in water (unless megaOnLand is true) | Level 2: Indominus on land
+if((G.level===1 && ((!G.megaOnLand && isWater) || (G.megaOnLand && !isWater))) || (G.level===2 && !isWater)){
 G.wilds.push({key:bossKey,x:tx*TS+TS/2,y:ty*TS+TS/2,anim:0,mt:0,dx:0,dy:0,face:1,isBoss:true});
 return;
 }
@@ -944,6 +948,17 @@ G.cam.x+=(camTx-G.cam.x)*LERP;
 G.cam.y+=(camTy-G.cam.y)*LERP;
 G.cam.x=Math.max(0,Math.min(WS*TS-canvas.width,G.cam.x));
 G.cam.y=Math.max(0,Math.min(WS*TS-canvas.height,G.cam.y));
+
+// Megalodon Level 1 events
+if(G.level === 1){
+G.megaTimer--;
+if(G.megaTimer <= 0){
+G.megaOnLand = !G.megaOnLand;
+G.megaTimer = 3600;
+G.wilds = G.wilds.filter(w => w.key !== 'megalodon');
+spawnMega();
+}
+}
 
 // Volcano Math
 if(G.level === 2){
