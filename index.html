@@ -99,6 +99,46 @@ megaTimer: 3600, // 1 min (60fps * 60s)
 megaOnLand: false
 };
 
+// ── SAVE & LOAD SYSTEM ──
+window.activeSave = null;
+function loadSaveData() {
+try {
+const s = localStorage.getItem('dinoworld_save');
+if (s) {
+const data = JSON.parse(s);
+// 24-hour expiration check
+if (Date.now() - data.ts < 24 * 60 * 60 * 1000) {
+window.activeSave = data;
+} else {
+localStorage.removeItem('dinoworld_save');
+}
+}
+} catch (e) { console.error("Save load failed", e); }
+}
+loadSaveData();
+
+function saveGame() {
+if (G.state === 'intro') return; // Don't save while on main menu
+try {
+const data = {
+ts: Date.now(),
+level: G.level,
+wheat: G.wheat,
+player: G.player,
+playerHp: G.playerHp,
+discovered: G.discovered,
+volcanoTimer: G.volcanoTimer,
+megaTimer: G.megaTimer,
+megaOnLand: G.megaOnLand
+};
+localStorage.setItem('dinoworld_save', JSON.stringify(data));
+} catch (e) { console.error("Save error", e); }
+}
+
+window.addEventListener('beforeunload', () => {
+if(G.state === 'world' || G.state === 'shop' || G.state === 'index') saveGame();
+});
+
 function generateWorld(){
 for(let y=0;y<WS;y++){
 worldMap[y]=[];tileClr[y]=[];
@@ -486,10 +526,22 @@ const d=pDino();
 ctx.fillStyle=RARITY_COLOR[d.rarity];ctx.shadowColor=RARITY_COLOR[d.rarity];ctx.shadowBlur=10;
 ctx.font='bold 15px Courier New';ctx.textAlign='center';
 ctx.fillText(`${d.em} ${d.name}[${d.rarity}]`,W/2,26);ctx.shadowBlur=0;
+
 // HP bar
 const pct=G.playerHp/pMaxHp();
 const hcol=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
 hpBar(W-195,12,180,16,G.playerHp,pMaxHp(),hcol,`HP ${G.playerHp}/${pMaxHp()}`);
+
+// Restart button in HUD
+btn(W-100, 32, 85, 20, 'Restart', '#aa2222', '#fff', () => {
+if(confirm("Are you sure you want to restart? All progress will be lost!")) {
+localStorage.removeItem('dinoworld_save');
+window.activeSave = null;
+startGame(true);
+G.state = 'intro';
+}
+}, '🔄');
+
 // Bottom buttons
 const bw=108,bh=44,gap=10,by=H-58;
 const total=3*(bw+gap)-gap;
@@ -837,6 +889,7 @@ btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='world';G.btns=[];});
 }
 // ── INTRO ──
 function drawIntro(){
+G.btns=[]; // Required so we don't duplicate/carry over buttons
 const W=canvas.width,H=canvas.height;
 ctx.fillStyle='#03080f';ctx.fillRect(0,0,W,H);
 for(let i=0;i<180;i++){
@@ -866,15 +919,36 @@ drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1,PLAYER_OC);
 drawBucketHat(W*0.22,H*0.7-DINOS.raptor.sz*2.2*0.55,2.0);
 drawDino('trex',W*0.78,H*0.7,-1,G.tick,2.2,1);
 if(W>700) drawDino('pterodactyl',W*0.5,H*0.65,1,G.tick,1.8,0.8);
-rr(W/2-160,H*0.78,320,56,8,'rgba(0,0,0,0.6)','rgba(255,255,255,0.1)',1);
+
+const iby = H*0.78;
+rr(W/2-160,iby,320,56,8,'rgba(0,0,0,0.6)','rgba(255,255,255,0.1)',1);
 ctx.fillStyle='rgba(180,220,255,0.8)';ctx.font='12px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
-ctx.fillText('WASD / Arrow Keys to move • Touch joystick on mobile',W/2,H*0.78+18);
+ctx.fillText('WASD / Arrow Keys to move • Touch joystick on mobile',W/2,iby+18);
 ctx.fillStyle='rgba(150,200,150,0.7)';ctx.font='11px Courier New';
-ctx.fillText('Walk into wild dinos to battle • Defeat them to collect!',W/2,H*0.78+38);
+ctx.fillText('Walk into wild dinos to battle • Defeat them to collect!',W/2,iby+38);
+
+// The Auto-Save Welcome UI logic
+if (window.activeSave) {
+const sy = Math.max(iby + 65, H*0.85);
+ctx.fillStyle='#44ff44';ctx.shadowColor='#00ff00';ctx.shadowBlur=8;
+ctx.font=`bold ${Math.min(16,W*0.04)}px Courier New`;
+ctx.fillText('Your recent data was saved!',W/2,sy);
+ctx.fillStyle='#aaffaa'; ctx.shadowBlur=0;
+ctx.font=`${Math.min(12,W*0.03)}px Courier New`;
+ctx.fillText('You can continue where you started.',W/2,sy+18);
+
+btn(W/2-110, sy+28, 100, 32, 'Continue', '#228822', '#fff', () => startGame(false), '▶');
+btn(W/2+10, sy+28, 100, 32, 'Restart', '#cc2222', '#fff', () => {
+localStorage.removeItem('dinoworld_save');
+window.activeSave = null;
+startGame(true);
+}, '🔄');
+} else {
 if(Math.floor(G.tick/28)%2){
 ctx.fillStyle='rgba(255,220,80,0.95)';ctx.shadowColor='#ffaa00';ctx.shadowBlur=12;
 ctx.font=`bold ${Math.min(20,W*0.02)}px Courier New`;
-ctx.fillText('[ Click or Press Any Key to Start ]',W/2,H*0.9);ctx.shadowBlur=0;
+ctx.fillText('[ Click or Press Any Key to Start ]',W/2,Math.max(iby + 75, H*0.9));ctx.shadowBlur=0;
+}
 }
 }
 // ── SPAWNING ──
@@ -911,6 +985,9 @@ spawnMega();
 // ── UPDATE ──
 function update(){
 G.tick++;
+// 24-Hour Save Hook (Saves every 5 seconds)
+if(G.tick % 300 === 0 && G.state === 'world') saveGame();
+
 if(G.encCd>0) G.encCd--;
 if(G.swapCd>0) G.swapCd--;
 if(G.state==='world') updateWorld();
@@ -1118,7 +1195,9 @@ alert("Cheat Activated: Teleported to Level 2 (Volcano Map)");
 
 window.addEventListener('keydown',e=>{
 G.keys[e.key]=true;G.keys[e.key.toLowerCase()]=true;
-if(G.state==='intro') startGame();
+if(G.state==='intro') {
+if(!window.activeSave) startGame(false); // Press any key start if no save
+}
 if(e.key==='`' || e.key==='~') doCheatPrompt();
 e.preventDefault();
 });
@@ -1132,7 +1211,11 @@ G.mx=e.clientX-r.left;G.my=e.clientY-r.top;
 canvas.addEventListener('click',e=>{
 const r=canvas.getBoundingClientRect();
 const cx=e.clientX-r.left, cy=e.clientY-r.top;
-if(G.state==='intro'){startGame();return;}
+if(G.state==='intro'){
+for(const b of G.btns){if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){b.act();return;}}
+if(!window.activeSave) startGame(false); // Let player click anywhere start if no save
+return;
+}
 for(const b of G.btns){if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){b.act();return;}}
 if(G.state==='world' && cx<80 && cy<50) { doCheatPrompt(); return; }
 });
@@ -1141,7 +1224,11 @@ e.preventDefault();
 const r=canvas.getBoundingClientRect();
 const t=e.touches[0];
 const tx=t.clientX-r.left, ty=t.clientY-r.top;
-if(G.state==='intro'){startGame();return;}
+if(G.state==='intro'){
+for(const b of G.btns){if(tx>=b.x&&tx<=b.x+b.w&&ty>=b.y&&ty<=b.y+b.h){b.act();return;}}
+if(!window.activeSave) startGame(false);
+return;
+}
 for(const b of G.btns){if(tx>=b.x&&tx<=b.x+b.w&&ty>=b.y&&ty<=b.y+b.h){b.act();return;}}
 if(G.state==='world' && tx<80 && ty<50) { doCheatPrompt(); return; }
 if(G.state==='world'){G.joy.on=true;G.joy.sx=tx;G.joy.sy=ty;G.joy.dx=0;G.joy.dy=0;}
@@ -1155,10 +1242,48 @@ G.joy.dy=t.clientY-r.top-G.joy.sy;
 canvas.addEventListener('touchend',e=>{
 e.preventDefault();G.joy.on=false;G.joy.dx=0;G.joy.dy=0;
 },{passive:false});
-function startGame(){
-G.state='world';
+
+function startGame(isNew = false) {
+if (!isNew && window.activeSave) {
+const s = window.activeSave;
+G.level = s.level || 1;
+G.wheat = s.wheat || 60;
+G.player = s.player;
+G.playerHp = s.playerHp;
+G.discovered = s.discovered;
+G.volcanoTimer = s.volcanoTimer || 10800;
+G.megaTimer = s.megaTimer || 3600;
+G.megaOnLand = s.megaOnLand || false;
+
+window.activeSave = null;
+generateWorld();
+spawnWilds();
+spawnMega();
+G.cam.x = Math.max(0, Math.min(WS*TS-canvas.width, G.player.x - canvas.width/2));
+G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2));
+} else if (isNew) {
+G.level = 1;
+G.wheat = 60;
+G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}};
+G.playerHp = 80;
+G.discovered = {raptor:true};
+G.volcanoTimer = 10800;
+G.megaTimer = 3600;
+G.megaOnLand = false;
+
+generateWorld();
+spawnWilds();
+spawnMega();
+G.cam.x = Math.max(0, Math.min(WS*TS-canvas.width, G.player.x - canvas.width/2));
+G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2));
+} else {
 G.playerHp = pMaxHp();
+G.cam.x = Math.max(0, Math.min(WS*TS-canvas.width, G.player.x - canvas.width/2));
+G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2));
 }
+G.state = 'world';
+}
+
 function loop(){update();render();requestAnimationFrame(loop);}
 loop();
 </script>
