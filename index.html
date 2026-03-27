@@ -29,20 +29,33 @@ const RARITY_COLOR = {Common:'#aaaaaa',Rare:'#4488ff',Epic:'#cc44ff',Legendary:'
 const PLAYER_OC = {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'};
 
 const DINOS = {
-raptor: {name:'Raptor', rarity:'Common', col:'#7ab648',acc:'#4a8a20',hp:80, atk:25,spd:4.2,sz:20,sp:0.15, rw:10, em:'🦖'},
-triceratops: {name:'Triceratops', rarity:'Common', col:'#9b7924',acc:'#6b4a0a',hp:130,atk:18,spd:2.8,sz:28,sp:0.12, rw:16, em:'🦕'},
-stegosaurus: {name:'Stegosaurus', rarity:'Common', col:'#6b9e4e',acc:'#4a7a2e',hp:110,atk:22,spd:2.5,sz:26,sp:0.10, rw:14, em:'🦕'},
-parasaurolophus:{name:'Parasaurolophus',rarity:'Common', col:'#ba7040',acc:'#8a4a1a',hp:90, atk:20,spd:3.5,sz:24,sp:0.09, rw:12, em:'🦕'},
-ankylosaurus: {name:'Ankylosaurus', rarity:'Rare', col:'#7a6030',acc:'#5a4010',hp:170,atk:24,spd:1.8,sz:32,sp:0.07, rw:30, em:'🦕'},
-trex: {name:'T-Rex', rarity:'Rare', col:'#8b2500',acc:'#6b1000',hp:160,atk:42,spd:3.2,sz:36,sp:0.055,rw:44, em:'🦖'},
-dilophosaurus:{name:'Dilophosaurus', rarity:'Rare', col:'#b87020',acc:'#885010',hp:100,atk:35,spd:4.5,sz:22,sp:0.06, rw:36, em:'🦖'},
-brachiosaurus:{name:'Brachiosaurus', rarity:'Rare', col:'#5a9a5a',acc:'#3a7a3a',hp:220,atk:14,spd:1.4,sz:42,sp:0.045,rw:40, em:'🦕'},
-spinosaurus: {name:'Spinosaurus', rarity:'Epic', col:'#4a6a9a',acc:'#2a4a7a',hp:200,atk:48,spd:3.8,sz:38,sp:0.028,rw:76, em:'🦖'},
-pterodactyl: {name:'Pterodactyl', rarity:'Epic', col:'#9a7a5a',acc:'#7a5a3a',hp:130,atk:52,spd:6.0,sz:30,sp:0.022,rw:84, em:'🦅'},
-carnotaurus: {name:'Carnotaurus', rarity:'Epic', col:'#9a3a4a',acc:'#7a1a2a',hp:175,atk:58,spd:5.0,sz:34,sp:0.018,rw:96, em:'🦖'},
-indoraptor: {name:'Indoraptor', rarity:'Legendary', col:'#1a1020',acc:'#3a1040',hp:280,atk:72,spd:5.5,sz:36,sp:0.035,rw:180, em:'🦖'},
-therizinosaurus:{name:'Therizinosaurus',rarity:'Legendary',col:'#2a5a4a',acc:'#1a3a2a',hp:320,atk:62,spd:2.8,sz:44,sp:0.025,rw:220,em:'🦕'},
-megalodon: {name:'Megalodon', rarity:'Boss', col:'#1a3060',acc:'#0a1540',hp:600,atk:85,spd:3.5,sz:64,sp:0, rw:500,em:'🦈'}
+// ── LEVEL 1 DINOS ──
+raptor: {name:'Raptor', rarity:'Common', col:'#7ab648',acc:'#4a8a20',hp:80, atk:25,spd:4.2,sz:20,sp:0.15, rw:10, em:'🦖', lvl:1},
+triceratops: {name:'Triceratops', rarity:'Common', col:'#9b7924',acc:'#6b4a0a',hp:130,atk:18,spd:2.8,sz:28,sp:0.12, rw:16, em:'🦕', lvl:1},
+stegosaurus: {name:'Stegosaurus', rarity:'Common', col:'#6b9e4e',acc:'#4a7a2e',hp:110,atk:22,spd:2.5,sz:26,sp:0.10, rw:14, em:'🦕', lvl:1},
+parasaurolophus:{name:'Parasaurolophus',rarity:'Common', col:'#ba7040',acc:'#8a4a1a',hp:90, atk:20,spd:3.5,sz:24,sp:0.09, rw:12, em:'🦕', lvl:1},
+ankylosaurus: {name:'Ankylosaurus', rarity:'Rare', col:'#7a6030',acc:'#5a4010',hp:170,atk:24,spd:1.8,sz:32,sp:0.07, rw:30, em:'🦕', lvl:1},
+trex: {name:'T-Rex', rarity:'Rare', col:'#8b2500',acc:'#6b1000',hp:160,atk:42,spd:3.2,sz:36,sp:0.055,rw:44, em:'🦖', lvl:1},
+dilophosaurus:{name:'Dilophosaurus', rarity:'Rare', col:'#b87020',acc:'#885010',hp:100,atk:35,spd:4.5,sz:22,sp:0.06, rw:36, em:'🦖', lvl:1},
+brachiosaurus:{name:'Brachiosaurus', rarity:'Rare', col:'#5a9a5a',acc:'#3a7a3a',hp:220,atk:14,spd:1.4,sz:42,sp:0.045,rw:40, em:'🦕', lvl:1},
+spinosaurus: {name:'Spinosaurus', rarity:'Epic', col:'#4a6a9a',acc:'#2a4a7a',hp:200,atk:48,spd:3.8,sz:38,sp:0.028,rw:76, em:'🦖', lvl:1},
+pterodactyl: {name:'Pterodactyl', rarity:'Epic', col:'#9a7a5a',acc:'#7a5a3a',hp:130,atk:52,spd:6.0,sz:30,sp:0.022,rw:84, em:'🦅', lvl:1},
+carnotaurus: {name:'Carnotaurus', rarity:'Epic', col:'#9a3a4a',acc:'#7a1a2a',hp:175,atk:58,spd:5.0,sz:34,sp:0.018,rw:96, em:'🦖', lvl:1},
+indoraptor: {name:'Indoraptor', rarity:'Legendary', col:'#1a1020',acc:'#3a1040',hp:280,atk:72,spd:5.5,sz:36,sp:0.035,rw:180, em:'🦖', lvl:1},
+therizinosaurus:{name:'Therizinosaurus',rarity:'Legendary',col:'#2a5a4a',acc:'#1a3a2a',hp:320,atk:62,spd:2.8,sz:44,sp:0.025,rw:220,em:'🦕', lvl:1},
+megalodon: {name:'Megalodon', rarity:'Boss', col:'#1a3060',acc:'#0a1540',hp:525,atk:55,spd:3.5,sz:64,sp:0, rw:500,em:'🦈', lvl:1}, // Fixed ATK Logic later in code
+
+// ── LEVEL 2 DINOS ──
+utahraptor: {name:'Utahraptor', rarity:'Common', col:'#8b5a2b',acc:'#5c3a21',hp:120,atk:30,spd:4.8,sz:22,sp:0.15, rw:15, em:'🦖', lvl:2},
+pachycephalosaurus: {name:'Pachycephalo', rarity:'Common', col:'#c2b280',acc:'#8a7f5c',hp:150,atk:25,spd:3.2,sz:24,sp:0.12, rw:18, em:'🦕', lvl:2},
+dimetrodon: {name:'Dimetrodon', rarity:'Common', col:'#556b2f',acc:'#2e8b57',hp:140,atk:28,spd:2.5,sz:20,sp:0.10, rw:20, em:'🦎', lvl:2},
+iguanodon: {name:'Iguanodon', rarity:'Rare', col:'#8fbc8f',acc:'#2f4f4f',hp:180,atk:32,spd:3.0,sz:28,sp:0.08, rw:35, em:'🦕', lvl:2},
+baryonyx: {name:'Baryonyx', rarity:'Rare', col:'#4682b4',acc:'#191970',hp:200,atk:45,spd:4.0,sz:32,sp:0.06, rw:45, em:'🦖', lvl:2},
+diplodocus: {name:'Diplodocus', rarity:'Rare', col:'#2e8b57',acc:'#006400',hp:300,atk:20,spd:1.2,sz:48,sp:0.05, rw:50, em:'🦕', lvl:2},
+mosasaurus: {name:'Mosasaurus', rarity:'Epic', col:'#008b8b',acc:'#000080',hp:250,atk:60,spd:4.5,sz:44,sp:0.03, rw:90, em:'🦈', lvl:2},
+giganotosaurus: {name:'Giganotosaurus',rarity:'Legendary',col:'#cd5c5c',acc:'#8b0000',hp:350,atk:75,spd:4.2,sz:40,sp:0.02,rw:200,em:'🦖', lvl:2},
+quetzalcoatlus: {name:'Quetzalcoatlus',rarity:'Legendary',col:'#d2b48c',acc:'#8b4513',hp:220,atk:68,spd:6.5,sz:38,sp:0.02,rw:220,em:'🦅', lvl:2},
+indominus: {name:'Indominus Rex', rarity:'Boss', col:'#f8f8ff',acc:'#c0c0c0',hp:800,atk:95,spd:4.5,sz:55,sp:0, rw:1000,em:'🦖', lvl:2}
 };
 
 // ── WORLD GEN ──
@@ -54,28 +67,11 @@ const GCLR=['#4a7c3f','#528942','#3d6b35','#6a9c5f','#508240'];
 const FCLR=['#2d5a27','#3a6b33','#254c20','#1e4518'];
 const WCLR=['#1a6b8a','#1e7a9f','#157a9a','#0d6080','#246090'];
 const SCLR=['#c8a85a','#d4b46a','#bc9e4e','#c4a456'];
-for(let y=0;y<WS;y++){
-worldMap[y]=[];tileClr[y]=[];
-for(let x=0;x<WS;x++){
-const cx=x-WS/2,cy=y-WS/2;
-const dist=Math.sqrt(cx*cx+cy*cy)/(WS*0.46);
-const n=noise(x,y);
-let t=0;
-if(dist>0.92) t=2;
-else if(dist>0.75&&n<0.1) t=2;
-else if(dist>0.62&&n<-0.6) t=2;
-else if(n>0.9&&dist<0.68) t=1;
-else if(dist>0.66&&dist<0.76) t=3;
-worldMap[y][x]=t;
-if(t===0) tileClr[y][x]=GCLR[Math.abs(x*3+y*7)%GCLR.length];
-else if(t===1) tileClr[y][x]=FCLR[Math.abs(x*5+y*3)%FCLR.length];
-else if(t===2) tileClr[y][x]=WCLR[Math.abs(x*7+y*11)%WCLR.length];
-else tileClr[y][x]=SCLR[Math.abs(x*11+y*5)%SCLR.length];
-}
-}
+
 // ── STATE ──
 const G = {
 state:'intro',
+level: 1, // Start on map 1
 wheat:60, tick:0,
 cam:{x:0,y:0},
 player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}},
@@ -90,8 +86,39 @@ encCd:0,
 idxPage:0,
 mx:-1,my:-1,
 particles:[],
-swapCd:0
+swapCd:0,
+
+// Volcano Level 2 events
+volcanoTimer: 10800, // 3 mins (60fps * 180s)
+volcanoActive: 0,
+camShake: 0,
+hazards:[]
 };
+
+function generateWorld(){
+for(let y=0;y<WS;y++){
+worldMap[y]=[];tileClr[y]=[];
+for(let x=0;x<WS;x++){
+const cx=x-WS/2,cy=y-WS/2;
+const dist=Math.sqrt(cx*cx+cy*cy)/(WS*0.46);
+const lx = x + (G.level === 2 ? 500 : 0); // Offset to generate totally new map terrain
+const ly = y + (G.level === 2 ? 500 : 0);
+const n=noise(lx,ly);
+let t=0;
+if(dist>0.92) t=2;
+else if(dist>0.75&&n<0.1) t=2;
+else if(dist>0.62&&n<-0.6) t=2;
+else if(n>0.9&&dist<0.68) t=1;
+else if(dist>0.66&&dist<0.76) t=3;
+worldMap[y][x]=t;
+if(t===0) tileClr[y][x]=GCLR[Math.abs(x*3+y*7)%GCLR.length];
+else if(t===1) tileClr[y][x]=FCLR[Math.abs(x*5+y*3)%FCLR.length];
+else if(t===2) tileClr[y][x]=WCLR[Math.abs(x*7+y*11)%WCLR.length];
+else tileClr[y][x]=SCLR[Math.abs(x*11+y*5)%SCLR.length];
+}
+}
+}
+generateWorld();
 
 function pDino(){ return DINOS[G.player.dk]; }
 function pMaxHp(){ return pDino().hp + G.player.upg.hp*32; }
@@ -156,21 +183,34 @@ const cTail=oc&&oc.tail?oc.tail:d.col;
 // Ground shadow
 ctx.fillStyle='rgba(0,0,0,0.18)';ctx.beginPath();
 ctx.ellipse(0,d.sz*s*0.55+2,d.sz*s*0.65,5,0,0,Math.PI*2);ctx.fill();
-if(key==='megalodon'){
-ctx.fillStyle=d.col;ctx.beginPath();ctx.ellipse(0,bob,46*s,22*s,0.2,0,Math.PI*2);ctx.fill();
+
+if(key==='megalodon' || key==='mosasaurus'){
+const isMosa = key==='mosasaurus';
+ctx.fillStyle=d.col;ctx.beginPath();ctx.ellipse(0,bob,(isMosa?40:46)*s,(isMosa?15:22)*s,0.2,0,Math.PI*2);ctx.fill();
 ctx.fillStyle=d.acc;ctx.beginPath();
-ctx.moveTo(5*s,-20*s+bob);ctx.lineTo(-10*s,5*s+bob);ctx.lineTo(20*s,5*s+bob);ctx.fill();
+ctx.moveTo(5*s,-15*s+bob);ctx.lineTo(-10*s,5*s+bob);ctx.lineTo(20*s,5*s+bob);ctx.fill();
 ctx.fillStyle=d.col;ctx.beginPath();
-ctx.moveTo(-10*s,5*s+bob);ctx.lineTo(-35*s,20*s+bob);ctx.lineTo(-5*s,18*s+bob);ctx.fill();
+ctx.moveTo(-10*s,5*s+bob);ctx.lineTo(-35*s,(isMosa?10:20)*s+bob);ctx.lineTo(-5*s,18*s+bob);ctx.fill();
+if(!isMosa){
 ctx.beginPath();ctx.moveTo(-10*s,5*s+bob);ctx.lineTo(-35*s,-5*s+bob);ctx.lineTo(-5*s,3*s+bob);ctx.fill();
-ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(30*s,-8*s+bob,4*s,0,Math.PI*2);ctx.fill();
-ctx.fillStyle='#000';ctx.beginPath();ctx.arc(31*s,-8*s+bob,2*s,0,Math.PI*2);ctx.fill();
+}else{
+ctx.beginPath();ctx.moveTo(-35*s,10*s+bob);ctx.lineTo(-50*s,15*s+bob);ctx.lineTo(-45*s,0*s+bob);ctx.fill(); // mosa tail fin
+ctx.fillStyle=d.acc;
+ctx.beginPath();ctx.ellipse(15*s,15*s+bob,8*s,4*s,0.5,0,Math.PI*2);ctx.fill();
+ctx.beginPath();ctx.ellipse(-10*s,12*s+bob,7*s,3*s,0.5,0,Math.PI*2);ctx.fill();
+}
+ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(30*s,-5*s+bob,4*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#000';ctx.beginPath();ctx.arc(31*s,-5*s+bob,2*s,0,Math.PI*2);ctx.fill();
 ctx.fillStyle='#fff';
 for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(i*8*s,12*s+bob);ctx.lineTo(i*8*s-3.5*s,20*s+bob);ctx.lineTo(i*8*s+3.5*s,20*s+bob);ctx.fill();}
+
+if(d.rarity==='Boss'){
 ctx.shadowColor='#ff3333';ctx.shadowBlur=30;
 ctx.strokeStyle='rgba(255,50,50,0.4)';ctx.lineWidth=3;ctx.beginPath();
 ctx.ellipse(0,bob,49*s,25*s,0.2,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
-} else if(key==='pterodactyl'){
+}
+} else if(key==='pterodactyl' || key==='quetzalcoatlus'){
+const isQuetz = key==='quetzalcoatlus';
 const flap=Math.sin(af*0.28)*14;
 ctx.fillStyle=d.col;ctx.beginPath();
 ctx.moveTo(-32*s,flap*s+bob);ctx.quadraticCurveTo(-42*s,12*s+bob,-16*s,16*s+bob);
@@ -179,13 +219,13 @@ ctx.quadraticCurveTo(42*s,12*s+bob,32*s,flap*s+bob);
 ctx.quadraticCurveTo(0,-20*s+bob,-32*s,flap*s+bob);ctx.fill();
 ctx.fillStyle=d.acc;ctx.beginPath();ctx.ellipse(20*s,-6*s+bob,11*s,7*s,-0.3,0,Math.PI*2);ctx.fill();
 ctx.fillStyle='#d4a030';ctx.beginPath();
-ctx.moveTo(29*s,-6*s+bob);ctx.lineTo(42*s,-3*s+bob);ctx.lineTo(29*s,0+bob);ctx.fill();
+ctx.moveTo(29*s,-6*s+bob);ctx.lineTo((isQuetz?50:42)*s,-3*s+bob);ctx.lineTo(29*s,0+bob);ctx.fill();
 ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(23*s,-8*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
 ctx.fillStyle='#111';ctx.beginPath();ctx.arc(23*s,-8*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
 } else {
 // Body / torso
 ctx.fillStyle=cBody;ctx.beginPath();ctx.ellipse(0,0+bob,21*s,13*s,0,0,Math.PI*2);ctx.fill();
-if(key==='brachiosaurus'){
+if(key==='brachiosaurus' || key==='diplodocus'){
 ctx.fillStyle=cNeck;ctx.beginPath();
 ctx.moveTo(3*s,-3*s+bob);ctx.quadraticCurveTo(20*s,-20*s+bob,15*s,-38*s+bob);
 ctx.lineTo(22*s,-38*s+bob);ctx.quadraticCurveTo(27*s,-20*s+bob,10*s,-3*s+bob);ctx.fill();
@@ -196,7 +236,7 @@ ctx.fillStyle='#111';ctx.beginPath();ctx.arc(23*s,-44*s+bob,1.2*s,0,Math.PI*2);c
 ctx.fillStyle=cNeck;ctx.beginPath();ctx.ellipse(18*s,-8*s+bob,10*s,7*s,-0.35,0,Math.PI*2);ctx.fill();
 ctx.fillStyle=cHead;ctx.beginPath();
 ctx.moveTo(26*s,-5*s+bob);ctx.lineTo(32*s,-9*s+bob);ctx.lineTo(32*s,-4*s+bob);ctx.fill();
-ctx.fillStyle='#ffee00';ctx.beginPath();ctx.arc(22*s,-11*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=(key==='indominus')?'#ff0000':'#ffee00';ctx.beginPath();ctx.arc(22*s,-11*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
 ctx.fillStyle='#111';ctx.beginPath();ctx.arc(22.5*s,-11*s+bob,1.2*s,0,Math.PI*2);ctx.fill();
 }
 // Tail
@@ -213,7 +253,7 @@ ctx.fillRect(-14*s,8*s+bob,5.5*s,(13-la)*s);
 ctx.fillRect(-24*s,8*s+bob,5.5*s,(13+la)*s);
 }
 // Arms
-if(['trex','carnotaurus','indoraptor','dilophosaurus'].includes(key)){
+if(['trex','carnotaurus','indoraptor','dilophosaurus','baryonyx','indominus','giganotosaurus'].includes(key)){
 ctx.fillStyle=cLegs;
 ctx.fillRect(10*s,-2*s+bob,3*s,8*s);ctx.fillRect(12*s,5*s+bob,4*s,3*s);
 }
@@ -242,6 +282,31 @@ ctx.fillStyle='#cc6030';ctx.beginPath();
 ctx.moveTo(15*s,-10*s+bob);ctx.quadraticCurveTo(5*s,-30*s+bob,-10*s,-20*s+bob);
 ctx.lineTo(-8*s,-16*s+bob);ctx.quadraticCurveTo(7*s,-22*s+bob,16*s,-8*s+bob);ctx.fill();
 }
+if(key==='indoraptor' || key==='indominus'){
+if(key==='indoraptor'){
+ctx.fillStyle='rgba(180,0,255,0.3)';ctx.beginPath();ctx.ellipse(0,0+bob,20*s,12*s,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffff00';
+for(let i=0;i<3;i++){ctx.fillRect((-6+i*6)*s,-6*s+bob,2.5*s,12*s);}
+}else{
+ctx.fillStyle=d.acc;
+for(let i=-2;i<=3;i++){
+ctx.beginPath();ctx.moveTo(i*8*s,-10*s+bob);
+ctx.lineTo(i*8*s-4*s,-22*s+bob);
+ctx.lineTo(i*8*s+4*s,-22*s+bob);ctx.fill();
+}
+}
+}
+if(key==='dimetrodon'){
+ctx.fillStyle=d.acc;ctx.beginPath();
+ctx.moveTo(-15*s,-5*s+bob);ctx.quadraticCurveTo(0,-30*s+bob,15*s,-5*s+bob);ctx.fill();
+}
+if(key==='pachycephalosaurus'){
+ctx.fillStyle='#e8c898';ctx.beginPath();ctx.ellipse(26*s,-13*s+bob,6*s,5*s,0,0,Math.PI*2);ctx.fill();
+}
+if(key==='giganotosaurus'){
+ctx.fillStyle=d.acc;
+for(let i=-2;i<=1;i++){ctx.fillRect((i*8)*s,-18*s+bob,4*s,8*s);}
+}
 if(d.rarity==='Legendary'){
 ctx.shadowColor=RARITY_COLOR.Legendary;ctx.shadowBlur=25;
 ctx.strokeStyle='rgba(255,170,0,0.5)';ctx.lineWidth=2;ctx.beginPath();
@@ -252,10 +317,10 @@ ctx.shadowColor=RARITY_COLOR.Epic;ctx.shadowBlur=18;
 ctx.strokeStyle='rgba(200,68,255,0.4)';ctx.lineWidth=1.5;ctx.beginPath();
 ctx.ellipse(0,0+bob,23*s,15*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 }
-if(key==='indoraptor'){
-ctx.fillStyle='rgba(180,0,255,0.3)';ctx.beginPath();ctx.ellipse(0,0+bob,20*s,12*s,0,0,Math.PI*2);ctx.fill();
-ctx.fillStyle='#ffff00';
-for(let i=0;i<3;i++){ctx.fillRect((-6+i*6)*s,-6*s+bob,2.5*s,12*s);}
+if(d.rarity==='Boss' && key==='indominus'){
+ctx.shadowColor='#ff3333';ctx.shadowBlur=30;
+ctx.strokeStyle='rgba(255,50,50,0.5)';ctx.lineWidth=3;ctx.beginPath();
+ctx.ellipse(0,0+bob,25*s,16*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 }
 }
 ctx.restore();
@@ -342,6 +407,28 @@ ctx.arc(px+TS/2,py+TS/2,8,0,Math.PI);ctx.stroke();
 }
 }
 }
+function drawHazards() {
+for(const h of G.hazards){
+const sx = h.x - G.cam.x;
+const sy = h.y - G.cam.y;
+if(sx < -100 || sx > canvas.width + 100 || sy < -100 || sy > canvas.height + 100) continue;
+
+// Ground target zone
+ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+ctx.beginPath(); ctx.arc(sx, sy, 45, 0, Math.PI * 2); ctx.fill();
+ctx.strokeStyle = 'rgba(255, 50, 0, 0.6)'; ctx.lineWidth = 2;
+ctx.beginPath(); ctx.arc(sx, sy, 45, 0, Math.PI * 2); ctx.stroke();
+
+// Falling rock
+const pct = 1 - (h.life / h.maxLife);
+const rockY = sy - 600 * (1 - pct);
+
+ctx.fillStyle = '#4a2010';
+ctx.beginPath(); ctx.arc(sx, rockY, 18, 0, Math.PI * 2); ctx.fill();
+ctx.fillStyle = '#ff4400';
+ctx.beginPath(); ctx.arc(sx, rockY, 12, 0, Math.PI * 2); ctx.fill();
+}
+}
 function drawWilds(){
 for(const w of G.wilds){
 const sx=w.x-G.cam.x, sy=w.y-G.cam.y;
@@ -386,7 +473,10 @@ ctx.strokeStyle='rgba(100,180,255,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.move
 // Bucket counter (TAP HERE FOR CHEATS)
 ctx.fillStyle='#aaddff';ctx.shadowColor='#55aaff';ctx.shadowBlur=8;
 ctx.font='bold 22px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
-ctx.fillText(`🪣 ${G.wheat}`,16,26);ctx.shadowBlur=0;
+ctx.fillText(`🪣 ${G.wheat}`,16,18);ctx.shadowBlur=0;
+ctx.fillStyle='#aaa'; ctx.font='12px Courier New';
+ctx.fillText(`Map: ${G.level===1?'Isla Uno':'Volcano Island'}`, 16, 38);
+
 // Active dino
 const d=pDino();
 ctx.fillStyle=RARITY_COLOR[d.rarity];ctx.shadowColor=RARITY_COLOR[d.rarity];ctx.shadowBlur=10;
@@ -400,7 +490,7 @@ hpBar(W-195,12,180,16,G.playerHp,pMaxHp(),hcol,`HP ${G.playerHp}/${pMaxHp()}`);
 const bw=108,bh=44,gap=10,by=H-58;
 const total=3*(bw+gap)-gap;
 const bsx=(W-total)/2;
-btn(bsx, by,bw,bh,'Index', '#2255cc','#fff',()=>{G.state='index';G.btns=[];},'📘');
+btn(bsx, by,bw,bh,'Index', '#2255cc','#fff',()=>{G.state='index';G.idxPage=0;G.btns=[];},'📘');
 btn(bsx+bw+gap,by,bw,bh,'Shop', '#cc5522','#fff',()=>{G.state='shop';G.btns=[];},'🛒');
 btn(bsx+2*(bw+gap),by,bw,bh,'Heal (15🪣)','#225522','#fff',()=>{
 if(G.wheat>=15&&G.playerHp<pMaxHp()){G.wheat-=15;G.playerHp=Math.min(pMaxHp(),G.playerHp+40);spawnParticles(W/2,H-80,'#44ff44',8);}
@@ -487,7 +577,30 @@ ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.fillText(`-${dn.val}`,dn.x,dn.y-(60-dn.life)*0.9);
 }
 ctx.globalAlpha=1;
-if(!b.res){
+
+if(b.res === 'level2'){
+rr(W/2-165,H/2-70,330,140,12,'rgba(40,0,40,0.92)','#cc44ff',3);
+ctx.fillStyle='#cc44ff';ctx.shadowColor='#cc44ff';ctx.shadowBlur=15;
+ctx.font='bold 26px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
+ctx.fillText('🏆 MEGALODON DEFEATED!',W/2,H/2-35);ctx.shadowBlur=0;
+ctx.fillStyle='#ddd';ctx.font='13px Courier New';
+ctx.fillText('The earth shakes... Map 2 Unlocked!',W/2,H/2);
+btn(W/2-85,H/2+25,170,40,'Enter Level 2','#8822cc','#fff',()=>{
+G.level = 2;
+G.discovered = {utahraptor: true};
+G.player.dk = 'utahraptor';
+generateWorld();
+spawnWilds();
+spawnMega();
+G.player.x = WS/2*TS; G.player.y = WS/2*TS;
+G.playerHp = pMaxHp();
+G.volcanoTimer = 10800;
+G.volcanoActive = 0; G.hazards =[];
+G.cam.x = G.player.x - canvas.width/2;
+G.cam.y = G.player.y - canvas.height/2;
+exitBattle();
+},'🌋');
+} else if(!b.res){
 const bx=W*0.65, by=H*0.73;
 btn(bx,by,130,46,'Attack','#cc2222','#fff',doAttack,'⚔️');
 btn(bx,by+54,130,46,'Run Away','#224422','#fff',doRun,'🏃');
@@ -520,7 +633,7 @@ function doAttack(){
 const b=G.battle;
 if(b.turn!=='player'||b.anim||b.res) return;
 b.anim=true;
-// Each ATK level adds +4 damage (cap at level 10 = +40 bonus)
+// Each ATK level adds +4 damage
 const atkLv = G.player.upg.atk;
 const dmg = 20 + atkLv * 4;
 b.ehp=Math.max(0,b.ehp-dmg);b.eshake=20;
@@ -532,7 +645,14 @@ setTimeout(()=>{
 const rew=DINOS[b.ek].rw*(b.isBoss?3:1);G.wheat+=rew;
 b.log.unshift(`🪣 Won ${rew} Buckets!`);
 if(!G.discovered[b.ek]){G.discovered[b.ek]=true;b.log.unshift(`📘 ${DINOS[b.ek].name} added to Index!`);}
-b.res='win';b.anim=false;
+
+if(b.ek === 'megalodon' && G.level === 1){
+b.res = 'level2';
+} else {
+b.res='win';
+}
+
+b.anim=false;
 spawnParticles(canvas.width*0.67,canvas.height*0.37,'#55ddff',16);
 },500);
 return;
@@ -543,7 +663,11 @@ function enemyTurn(){
 const b=G.battle;if(b.res) return;
 b.anim=true;
 const en=DINOS[b.ek];
-const dmg=Math.max(1,en.atk+Math.floor(Math.random()*10)-5);
+let dmg=Math.max(1,en.atk+Math.floor(Math.random()*10)-5);
+
+// Specific constraint for Megalodon (50 - 60)
+if(b.ek === 'megalodon') dmg = 50 + Math.floor(Math.random() * 11);
+
 b.php=Math.max(0,b.php-dmg);G.playerHp=b.php;b.pshake=18;
 b.dnums.push({x:canvas.width*0.28,y:canvas.height*0.52,val:dmg,col:'#ff8844',life:60});
 b.log.unshift(`${en.name} attacks for ${dmg}!`);if(b.log.length>5)b.log.pop();
@@ -579,8 +703,10 @@ ctx.fillStyle='rgba(10,25,60,0.95)';ctx.fillRect(0,0,W,52);
 ctx.strokeStyle='rgba(100,150,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,52);ctx.lineTo(W,52);ctx.stroke();
 ctx.fillStyle='#6699ff';ctx.shadowColor='#4477ff';ctx.shadowBlur=15;
 ctx.font='bold 24px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
-ctx.fillText('📘 DINO INDEX',W/2,26);ctx.shadowBlur=0;
-const ak=Object.keys(DINOS);
+ctx.fillText(G.level===1?'📘 DINO INDEX (MAP 1)':'📘 DINO INDEX (MAP 2)',W/2,26);ctx.shadowBlur=0;
+
+// Filter Index Keys based on Current Level
+const ak=Object.keys(DINOS).filter(k=>DINOS[k].lvl === G.level);
 ctx.fillStyle='#888';ctx.font='12px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 ctx.fillText(`${ak.filter(k=>G.discovered[k]).length}/${ak.length} Discovered`,20,26);
 const cw=Math.min(145,Math.floor((W-30)/Math.max(1,Math.floor((W-30)/145))));
@@ -619,7 +745,8 @@ G.playerHp = Math.min(oldHp, newMax);
 G.swapCd = 3600;
 const ttx = Math.floor(G.player.x/TS);
 const tty = Math.floor(G.player.y/TS);
-if(worldMap[tty] && worldMap[tty][ttx] === 2 && !['spinosaurus','pterodactyl','megalodon'].includes(key)){
+const canSwim =['spinosaurus','pterodactyl','megalodon','mosasaurus'].includes(key);
+if(worldMap[tty] && worldMap[tty][ttx] === 2 && !canSwim){
 G.player.x = WS/2*TS;
 G.player.y = WS/2*TS;
 }
@@ -662,7 +789,6 @@ const tw=upgs.length*cw2+(upgs.length-1)*18;
 const sx2=(W-tw)/2;
 upgs.forEach((upg,i)=>{
 const lv=G.player.upg[upg.k];
-// HP and ATK are capped at level 10; SPD is uncapped
 const maxLv=(upg.k==='hp'||upg.k==='atk')?10:999;
 const maxed=lv>=maxLv;
 const cost=upg.base+lv*15;
@@ -689,12 +815,10 @@ if(upg.k==='hp') G.playerHp+=32;
 spawnParticles(x+cw2/2,y+175,'#55ccff',10);
 }
 });
-// Level dots (up to 10)
 for(let l=0;l<Math.min(lv,10);l++){
 ctx.fillStyle=upg.col;ctx.beginPath();ctx.arc(x+9+l*11,y+ch-12,4,0,Math.PI*2);ctx.fill();
 }
 });
-// Heal card
 const hy=65+ch+20, hcost=30;
 const hcan=G.wheat>=hcost&&G.playerHp<pMaxHp();
 const hw=Math.min(320,W-60), hx=(W-hw)/2;
@@ -727,7 +851,7 @@ ctx.font=`bold ${Math.min(62,W*0.065)}px Courier New`;ctx.textAlign='center';ctx
 ctx.fillText('🦖 DinoWorld',W/2,H*0.3);ctx.shadowBlur=0;
 ctx.fillStyle='rgba(150,200,120,0.85)';ctx.font=`${Math.min(18,W*0.018)}px Courier New`;
 ctx.fillText('Open-World Survival Index',W/2,H*0.3+52);
-const feats=['🪣 Collect Buckets','📘 Dino Index','⚔️ Epic Battles','🦈 Boss Raids','🛒 Upgrade Shop'];
+const feats=['🪣 Collect Buckets','📘 Dino Index','🌋 2 Huge Maps','🦈 Boss Raids','🛒 Upgrade Shop'];
 feats.forEach((f,i)=>{
 const fx=W/2+(i-2)*Math.min(158,W/6.2), fy=H*0.5;
 rr(fx-54,fy-14,108,28,6,'rgba(255,255,255,0.06)','rgba(255,255,255,0.14)',1);
@@ -751,9 +875,10 @@ ctx.fillText('[ Click or Press Any Key to Start ]',W/2,H*0.9);ctx.shadowBlur=0;
 }
 // ── SPAWNING ──
 function spawnWilds(){
-const keys=Object.keys(DINOS).filter(k=>k!=='megalodon');
+G.wilds =[];
+const keys=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
 for(let i=0;i<36;i++){
-let chosen='raptor', acc=0;
+let chosen=keys[0], acc=0;
 const rng=Math.random();
 for(const k of keys){acc+=DINOS[k].sp;if(rng<acc){chosen=k;break;}}
 for(let attempt=0;attempt<20;attempt++){
@@ -766,10 +891,13 @@ break;
 }
 }
 function spawnMega(){
+const bossKey = G.level === 1 ? 'megalodon' : 'indominus';
 for(let attempt=0;attempt<300;attempt++){
 const tx=Math.floor(Math.random()*WS), ty=Math.floor(Math.random()*WS);
-if(worldMap[ty]&&worldMap[ty][tx]===2){
-G.wilds.push({key:'megalodon',x:tx*TS+TS/2,y:ty*TS+TS/2,anim:0,mt:0,dx:0,dy:0,face:1,isBoss:true});
+const isWater = worldMap[ty]&&worldMap[ty][tx]===2;
+// Level 1: Megalodon in water | Level 2: Indominus on land
+if((G.level===1 && isWater) || (G.level===2 && !isWater)){
+G.wilds.push({key:bossKey,x:tx*TS+TS/2,y:ty*TS+TS/2,anim:0,mt:0,dx:0,dy:0,face:1,isBoss:true});
 return;
 }
 }
@@ -787,6 +915,7 @@ G.particles=G.particles.filter(p=>p.life>0);
 G.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.08;p.life--;});
 }
 function updateWorld(){
+if(G.camShake > 0) G.camShake--;
 const p=G.player;
 let dx=0,dy=0;
 const spd=pSpd();
@@ -801,7 +930,7 @@ if(jl>12){dx+=(G.joy.dx/jl)*spd;dy+=(G.joy.dy/jl)*spd;}
 if(dx&&dy){dx*=0.707;dy*=0.707;}
 const nx=p.x+dx, ny=p.y+dy;
 const ttx=Math.floor(nx/TS), tty=Math.floor(ny/TS);
-const canSwim=['spinosaurus','pterodactyl','megalodon'].includes(p.dk);
+const canSwim=['spinosaurus','pterodactyl','megalodon','mosasaurus'].includes(p.dk);
 if(ttx>=0&&tty>=0&&ttx<WS&&tty<WS){
 if(worldMap[tty][ttx]!==2||canSwim){p.x=nx;p.y=ny;}
 }
@@ -815,6 +944,41 @@ G.cam.x+=(camTx-G.cam.x)*LERP;
 G.cam.y+=(camTy-G.cam.y)*LERP;
 G.cam.x=Math.max(0,Math.min(WS*TS-canvas.width,G.cam.x));
 G.cam.y=Math.max(0,Math.min(WS*TS-canvas.height,G.cam.y));
+
+// Volcano Math
+if(G.level === 2){
+if(G.volcanoActive <= 0){
+G.volcanoTimer--;
+if(G.volcanoTimer <= 0){
+G.volcanoActive = 1200; // 20s
+G.camShake = 60; // Initial event rumble
+G.volcanoTimer = 10800;
+}
+} else {
+G.volcanoActive--;
+if(G.volcanoActive % 40 === 0){ // Drop rate
+G.hazards.push({x: p.x + (Math.random()-0.5)*500, y: p.y + (Math.random()-0.5)*500, life: 75, maxLife: 75});
+}
+}
+for(let i=G.hazards.length-1; i>=0; i--){
+const h = G.hazards[i];
+h.life--;
+if(h.life <= 0){
+if(Math.hypot(p.x - h.x, p.y - h.y) < 45) {
+G.playerHp -= 25;
+spawnParticles(p.x, p.y, '#ff0000', 10);
+if(G.playerHp <= 0){
+G.playerHp = pMaxHp();
+G.wheat = Math.max(0, Math.floor(G.wheat * 0.9));
+p.x = WS/2*TS; p.y = WS/2*TS;
+}
+}
+spawnParticles(h.x, h.y, '#ff6600', 25);
+G.hazards.splice(i, 1);
+}
+}
+}
+
 // Wild AI movement
 for(const w of G.wilds){
 w.mt--;
@@ -828,13 +992,10 @@ if(w.dx!==0) w.face=w.dx>0?1:-1;
 w.x=Math.max(TS,Math.min((WS-1)*TS,w.x));
 w.y=Math.max(TS,Math.min((WS-1)*TS,w.y));
 w.anim++;
-
-// Prevent non-swimmers from walking on water
 const wtx=Math.floor(w.x/TS), wty=Math.floor(w.y/TS);
-const wCanSwim =['spinosaurus','pterodactyl','megalodon'].includes(w.key);
+const wCanSwim =['spinosaurus','pterodactyl','megalodon','mosasaurus'].includes(w.key);
 if(wtx>=0&&wty>=0&&wtx<WS&&wty<WS && worldMap[wty][wtx]===2 && !wCanSwim){
-w.x -= w.dx || 0;
-w.y -= w.dy || 0;
+w.x -= w.dx || 0; w.y -= w.dy || 0;
 w.dx = w.dy = 0;
 }
 }
@@ -850,9 +1011,9 @@ G.wilds.splice(i,1);
 startBattle(w.key,wasBoss);
 if(wasBoss) setTimeout(spawnMega,90000);
 else setTimeout(()=>{
-let ch='raptor',ac2=0;
+const ks2=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
+let ch=ks2[0],ac2=0;
 const r2=Math.random();
-const ks2=Object.keys(DINOS).filter(k=>k!=='megalodon');
 for(const k of ks2){ac2+=DINOS[k].sp;if(r2<ac2){ch=k;break;}}
 for(let att=0;att<20;att++){
 const tx2=Math.floor(Math.random()*WS),ty2=Math.floor(Math.random()*WS);
@@ -878,9 +1039,26 @@ function render(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 if(G.state==='intro'){drawIntro();return;}
 if(G.state==='world'){
-drawWorld();drawWilds();drawPlayer();
-updateDrawParticles();drawHUD();
-// Touch joystick overlay
+ctx.save();
+if(G.camShake > 0) ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10);
+drawWorld();
+drawWilds();
+drawPlayer();
+drawHazards();
+updateDrawParticles();
+ctx.restore();
+
+// Volcano Tint Effect Overlay
+if(G.level===2 && G.volcanoActive > 0){
+ctx.fillStyle = 'rgba(255, 40, 0, 0.15)';
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle = '#ff4444'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+ctx.font = 'bold 22px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+ctx.fillText(`🌋 VOLCANO ERUPTION! DODGE FALLING ROCKS! ${Math.ceil(G.volcanoActive/60)}s`, canvas.width/2, 60);
+ctx.shadowBlur = 0;
+}
+
+drawHUD();
 if(G.joy.on){
 const jx=G.joy.sx,jy=G.joy.sy;
 ctx.fillStyle='rgba(255,255,255,0.12)';ctx.beginPath();ctx.arc(jx,jy,52,0,Math.PI*2);ctx.fill();
@@ -915,6 +1093,11 @@ G.player.upg.atk = 99;
 G.player.upg.spd = 99;
 G.playerHp = pMaxHp();
 alert("Cheat Activated: GOD MODE");
+} else if(c === 'dev_lvl2') {
+G.level = 2; G.discovered = {utahraptor: true}; G.player.dk = 'utahraptor';
+generateWorld(); spawnWilds(); spawnMega(); G.playerHp = pMaxHp();
+G.volcanoTimer = 10800; G.volcanoActive = 0; G.hazards =[];
+alert("Cheat Activated: Teleported to Level 2 (Volcano Map)");
 }
 }
 
@@ -936,7 +1119,6 @@ const r=canvas.getBoundingClientRect();
 const cx=e.clientX-r.left, cy=e.clientY-r.top;
 if(G.state==='intro'){startGame();return;}
 for(const b of G.btns){if(cx>=b.x&&cx<=b.x+b.w&&cy>=b.y&&cy<=b.y+b.h){b.act();return;}}
-// Cheat Touch Trigger: Top left corner (Over the 🪣 text)
 if(G.state==='world' && cx<80 && cy<50) { doCheatPrompt(); return; }
 });
 canvas.addEventListener('touchstart',e=>{
@@ -946,7 +1128,6 @@ const t=e.touches[0];
 const tx=t.clientX-r.left, ty=t.clientY-r.top;
 if(G.state==='intro'){startGame();return;}
 for(const b of G.btns){if(tx>=b.x&&tx<=b.x+b.w&&ty>=b.y&&ty<=b.y+b.h){b.act();return;}}
-// Cheat Touch Trigger: Top left corner (Over the 🪣 text)
 if(G.state==='world' && tx<80 && ty<50) { doCheatPrompt(); return; }
 if(G.state==='world'){G.joy.on=true;G.joy.sx=tx;G.joy.sy=ty;G.joy.dx=0;G.joy.dy=0;}
 },{passive:false});
