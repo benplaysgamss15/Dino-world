@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0,
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🦖 DinoWorld - Open World Survival Index</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'Courier New',Courier,monospace}
-#gc{display:block;image-rendering:pixelated;cursor:crosshair;touch-action:none;max-width:100vw;max-height:100vh}
+#gc{display:block;image-rendering:pixelated;cursor:crosshair;touch-action:none}
 </style>
 </head>
 <body>
@@ -87,7 +87,6 @@ idxPage:0,
 mx:-1,my:-1,
 particles:[],
 swapCd:0,
-cheatsEnabled: false,
 
 // Volcano Level 2 events
 volcanoTimer: 10800, // 3 mins (60fps * 180s)
@@ -130,8 +129,7 @@ playerHp: G.playerHp,
 discovered: G.discovered,
 volcanoTimer: G.volcanoTimer,
 megaTimer: G.megaTimer,
-megaOnLand: G.megaOnLand,
-cheatsEnabled: G.cheatsEnabled
+megaOnLand: G.megaOnLand
 };
 localStorage.setItem('dinoworld_save', JSON.stringify(data));
 } catch (e) { console.error("Save error", e); }
@@ -528,13 +526,6 @@ const d=pDino();
 ctx.fillStyle=RARITY_COLOR[d.rarity];ctx.shadowColor=RARITY_COLOR[d.rarity];ctx.shadowBlur=10;
 ctx.font='bold 15px Courier New';ctx.textAlign='center';
 ctx.fillText(`${d.em} ${d.name}[${d.rarity}]`,W/2,26);ctx.shadowBlur=0;
-
-// Big Red Cheat Text
-if(G.cheatsEnabled){
-ctx.fillStyle='#ff2222';ctx.shadowColor='#ff0000';ctx.shadowBlur=12;
-ctx.font='bold 16px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
-ctx.fillText('⚠ CHEATS ENABLED ⚠',W/2,44);ctx.shadowBlur=0;
-}
 
 // HP bar
 const pct=G.playerHp/pMaxHp();
@@ -1188,24 +1179,20 @@ if(!code) return;
 const c = code.trim().toLowerCase();
 if(c === 'dev_money') {
 G.wheat += 999999;
-G.cheatsEnabled = true;
 alert("Cheat Activated: +999,999 Buckets");
 } else if(c === 'dev_dinos') {
 for(let k in DINOS) G.discovered[k] = true;
-G.cheatsEnabled = true;
 alert("Cheat Activated: All Dinos Unlocked");
 } else if(c === 'dev_god') {
 G.player.upg.hp = 99;
 G.player.upg.atk = 99;
 G.player.upg.spd = 99;
 G.playerHp = pMaxHp();
-G.cheatsEnabled = true;
 alert("Cheat Activated: GOD MODE");
 } else if(c === 'dev_lvl2') {
 G.level = 2; G.discovered = {utahraptor: true}; G.player.dk = 'utahraptor';
 generateWorld(); spawnWilds(); spawnMega(); G.playerHp = pMaxHp();
 G.volcanoTimer = 10800; G.volcanoActive = 0; G.hazards =[];
-G.cheatsEnabled = true;
 alert("Cheat Activated: Teleported to Level 2 (Volcano Map)");
 }
 }
@@ -1271,7 +1258,6 @@ G.discovered = s.discovered;
 G.volcanoTimer = s.volcanoTimer || 10800;
 G.megaTimer = s.megaTimer || 3600;
 G.megaOnLand = s.megaOnLand || false;
-G.cheatsEnabled = s.cheatsEnabled || false;
 
 window.activeSave = null;
 generateWorld();
@@ -1288,7 +1274,6 @@ G.discovered = {raptor:true};
 G.volcanoTimer = 10800;
 G.megaTimer = 3600;
 G.megaOnLand = false;
-G.cheatsEnabled = false;
 
 generateWorld();
 spawnWilds();
