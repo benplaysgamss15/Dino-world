@@ -577,6 +577,18 @@ for(let i=0;i<W;i+=48){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,H);ctx.strok
 for(let i=0;i<H;i+=48){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(W,i);ctx.stroke();}
 ctx.fillStyle=boss?'rgba(100,15,15,0.45)':'rgba(15,50,100,0.4)';
 ctx.beginPath();ctx.ellipse(W/2,H*0.62,W*0.42,H*0.13,0,0,Math.PI*2);ctx.fill();
+// ── CHEAT INDICATOR (battle) ──
+if(G.cheatsActive){
+const pulse = 0.6 + Math.sin(G.tick * 0.12) * 0.4;
+ctx.fillStyle = `rgba(255, 0, 0, ${pulse})`;
+ctx.shadowColor = '#ff0000';
+ctx.shadowBlur = 14;
+ctx.font = 'bold 18px Courier New';
+ctx.textAlign = 'right';
+ctx.textBaseline = 'top';
+ctx.fillText('⚠ CHEATS ACTIVE ⚠', W - 12, 8);
+ctx.shadowBlur = 0;
+}
 if(boss){
 ctx.fillStyle='rgba(150,0,0,0.3)';ctx.fillRect(0,0,W,50);
 ctx.strokeStyle='#ff3333';ctx.lineWidth=2;ctx.strokeRect(0,0,W,50);
