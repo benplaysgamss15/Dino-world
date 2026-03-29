@@ -82,7 +82,7 @@ state:'intro',
 level: 1,
 wheat:60, tick:0,
 cam:{x:0,y:0},
-player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}},
+player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket'},
 playerHp:80,
 discovered:{raptor:true},
 wilds:[],
@@ -142,7 +142,7 @@ localStorage.setItem('dinoworld_save', JSON.stringify(data));
 }
 
 window.addEventListener('beforeunload', () => {
-if(G.state === 'world' || G.state === 'shop' || G.state === 'index') saveGame();
+if(G.state === 'world' || G.state === 'shop' || G.state === 'index' || G.state === 'customize') saveGame();
 });
 
 function generateWorld(){
@@ -368,10 +368,12 @@ ctx.ellipse(0,0+bob,25*s,16*s,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 }
 ctx.restore();
 }
-// ── BUCKET HAT ──
-function drawBucketHat(cx,cy,sc){
-const s=sc||1;
-ctx.save();ctx.translate(cx,cy);
+// ── HATS ──
+function drawHat(type, cx, cy, sc){
+const s = sc || 1;
+ctx.save(); ctx.translate(cx, cy);
+
+if (!type || type === 'bucket') {
 ctx.save();ctx.translate(-11*s,-18*s);ctx.rotate(-0.35);
 const hg1=ctx.createLinearGradient(0,-20*s,0,0);hg1.addColorStop(0,'#00ffee');hg1.addColorStop(1,'#009999');
 ctx.fillStyle=hg1;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-4*s,-22*s);ctx.lineTo(4*s,-22*s);ctx.closePath();ctx.fill();
@@ -396,6 +398,60 @@ ctx.strokeStyle='rgba(0,220,200,0.3)';ctx.lineWidth=1.5*s;
 ctx.beginPath();ctx.moveTo(-11*s,-18*s);ctx.lineTo(-15*s,-40*s);ctx.stroke();
 ctx.beginPath();ctx.moveTo(11*s,-18*s);ctx.lineTo(15*s,-40*s);ctx.stroke();
 ctx.shadowBlur=0;
+} else if (type === 'bacon') {
+ctx.fillStyle = '#cc6600';
+ctx.beginPath(); ctx.ellipse(0, -8*s, 16*s, 10*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = '#e67300';
+const spikes = [[-10,-20,-18,-2], [-2,-24,-8,4], [6,-22,12,0], [12,-18,18,6]];
+spikes.forEach(sp => {
+ctx.beginPath(); ctx.moveTo(sp[0]*s, sp[1]*s);
+ctx.quadraticCurveTo(sp[2]*s, sp[3]*s, (sp[2]-4)*s, (sp[3]+8)*s);
+ctx.lineTo(0, -5*s); ctx.fill();
+});
+ctx.fillStyle = '#994d00';
+const spikes2 = [[-14,-14,-22,5], [-6,-26,-14,-5],[2,-26,6,-5], [16,-12,22,8]];
+spikes2.forEach(sp => {
+ctx.beginPath(); ctx.moveTo(sp[0]*s, sp[1]*s);
+ctx.quadraticCurveTo(sp[2]*s, sp[3]*s, (sp[2]+4)*s, (sp[3]+6)*s);
+ctx.lineTo(0, -5*s); ctx.fill();
+});
+} else if (type === 'dino_hood') {
+const hg = ctx.createLinearGradient(0, -20*s, 0, 5*s);
+hg.addColorStop(0, '#5cd65c'); hg.addColorStop(1, '#2eb82e');
+ctx.fillStyle = '#145214';
+ctx.beginPath(); ctx.moveTo(0, -18*s); ctx.lineTo(-6*s, -30*s); ctx.lineTo(8*s, -18*s); ctx.fill();
+ctx.beginPath(); ctx.moveTo(-8*s, -10*s); ctx.lineTo(-18*s, -20*s); ctx.lineTo(-12*s, -5*s); ctx.fill();
+ctx.fillStyle = hg;
+ctx.beginPath(); ctx.moveTo(-16*s, 8*s); ctx.quadraticCurveTo(-20*s, -18*s, 0, -22*s);
+ctx.quadraticCurveTo(20*s, -18*s, 16*s, 8*s); ctx.quadraticCurveTo(0, 14*s, -16*s, 8*s); ctx.fill();
+ctx.fillStyle = '#ffffe6';
+for(let i = -2; i <= 2; i++) {
+ctx.beginPath(); ctx.moveTo((i*5 - 2)*s, 9*s); ctx.lineTo((i*5)*s, 15*s); ctx.lineTo((i*5 + 2)*s, 9*s); ctx.fill();
+}
+ctx.fillStyle = '#0a0a0a';
+ctx.beginPath(); ctx.ellipse(-8*s, -6*s, 2.5*s, 3.5*s, -0.2, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.ellipse(8*s, -6*s, 2.5*s, 3.5*s, 0.2, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = '#fff';
+ctx.beginPath(); ctx.arc(-8.5*s, -7*s, 1*s, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.arc(7.5*s, -7*s, 1*s, 0, Math.PI*2); ctx.fill();
+} else if (type === 'smiley') {
+const hg = ctx.createLinearGradient(0, -22*s, 0, 0);
+hg.addColorStop(0, '#ffe600'); hg.addColorStop(1, '#e6b800');
+ctx.fillStyle = hg;
+ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-12*s, -20*s); ctx.lineTo(12*s, -20*s); ctx.closePath(); ctx.fill();
+ctx.fillStyle = '#cca300';
+ctx.beginPath(); ctx.ellipse(0, 4*s, 18*s, 4*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = hg;
+ctx.beginPath(); ctx.ellipse(0, 4*s, 16*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = '#ffdb4d';
+ctx.beginPath(); ctx.ellipse(0, -20*s, 12*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = '#1a1a1a';
+ctx.beginPath(); ctx.ellipse(-4*s, -10*s, 1.2*s, 2*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.beginPath(); ctx.ellipse(4*s, -10*s, 1.2*s, 2*s, 0, 0, Math.PI*2); ctx.fill();
+ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.5*s; ctx.lineCap = 'round';
+ctx.beginPath(); ctx.moveTo(-5*s, -4*s); ctx.quadraticCurveTo(0, 1*s, 5*s, -4*s); ctx.stroke();
+}
+
 ctx.restore();
 }
 // ── PARTICLES ──
@@ -485,7 +541,7 @@ ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(sx,ay);ctx.lineTo(sx-asz,ay-asz)
 drawDino(p.dk,sx,sy,p.face,p.anim,1.25,1,PLAYER_OC);
 const headOff=DINOS[p.dk].sz*1.25*0.55;
 const bob=Math.sin(p.anim*0.18)*2.5;
-drawBucketHat(sx,sy-headOff+bob-2,1.1);
+drawHat(G.player.hat || 'bucket',sx,sy-headOff+bob-2,1.1);
 const pct=G.playerHp/pMaxHp();
 const col=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
 hpBar(sx-28,sy-DINOS[p.dk].sz-18,56,8,G.playerHp,pMaxHp(),col);
@@ -616,7 +672,7 @@ const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
 const pDk=G.player.dk;
 drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1,PLAYER_OC);
 const bpHeadY=H*0.52-DINOS[pDk].sz*1.65*0.55;
-drawBucketHat(W*0.28+pshake,bpHeadY,1.5);
+drawHat(G.player.hat || 'bucket',W*0.28+pshake,bpHeadY,1.5);
 const phPct=b.php/b.pmhp;
 const phCol=phPct>0.5?'#44cc44':phPct>0.25?'#cccc44':'#cc4444';
 hpBar(W*0.05,H*0.68,W*0.36,18,b.php,b.pmhp,phCol,`${b.php}/${b.pmhp}`);
@@ -882,8 +938,82 @@ ctx.fillStyle='#aaddff';ctx.font='13px Courier New';ctx.fillText(`Cost: 🪣 ${h
 btn(hx+hw/2-55,hy+6,110,66,'',hcan?'rgba(0,60,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
 if(G.wheat>=hcost&&G.playerHp<pMaxHp()){G.wheat-=hcost;G.playerHp=pMaxHp();spawnParticles(W/2,H/2,'#44ff44',14);}
 });
+
+const custY = hy + 90;
+const custW = Math.min(320, W-60);
+const custX = (W - custW) / 2;
+btn(custX, custY, custW, 50, 'customize ur avatar here', '#cc5522', '#fff', () => {
+G.state = 'customize';
+G.btns =[];
+}, '🧢');
+
 btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='world';G.btns=[];});
 }
+
+// ── CUSTOMIZE ──
+function drawCustomize(){
+G.btns=[];
+const W=canvas.width,H=canvas.height;
+ctx.fillStyle='#0a0602';ctx.fillRect(0,0,W,H);
+for(let i=0;i<W;i+=60){
+ctx.strokeStyle='rgba(150,50,255,0.03)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,H);ctx.stroke();
+}
+ctx.fillStyle='rgba(40,10,80,0.95)';ctx.fillRect(0,0,W,52);
+ctx.strokeStyle='rgba(200,100,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,52);ctx.lineTo(W,52);ctx.stroke();
+ctx.fillStyle='#dd88ff';ctx.shadowColor='#aa44ff';ctx.shadowBlur=12;
+ctx.font='bold 24px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
+ctx.fillText('🧢 AVATAR CUSTOMIZATION',W/2,26);ctx.shadowBlur=0;
+
+const hats =[
+{ id: 'bucket', name: 'Cyber Bucket' },
+{ id: 'bacon', name: 'Bacon Hair' },
+{ id: 'dino_hood', name: 'Dino Hood' },
+{ id: 'smiley', name: 'Smiley Bucket' }
+];
+
+const px = W/2;
+const py = 190;
+const pDk = G.player.dk;
+drawDino(pDk, px, py, 1, G.tick, 2.5, 1, PLAYER_OC);
+const headOff = DINOS[pDk].sz * 2.5 * 0.55;
+const bob = Math.sin(G.tick * 0.18) * 2.5;
+drawHat(G.player.hat || 'bucket', px, py - headOff + bob - 2, 2.2);
+
+const cw = Math.min(160, (W-40)/2);
+const ch = 120;
+const sx = W/2 - cw - 10;
+const sy = 300;
+
+hats.forEach((h, i) => {
+const col = i % 2;
+const row = Math.floor(i / 2);
+const x = sx + col * (cw + 20);
+const y = sy + row * (ch + 20);
+
+const isEq = (G.player.hat || 'bucket') === h.id;
+rr(x, y, cw, ch, 10, isEq ? 'rgba(80,20,120,0.9)' : 'rgba(20,10,30,0.9)', isEq ? '#dd88ff' : '#442266', 2);
+
+drawHat(h.id, x + cw/2, y + 45, 1.8);
+
+ctx.fillStyle = isEq ? '#dd88ff' : '#ccc';
+ctx.font = 'bold 13px Courier New';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText(h.name, x + cw/2, y + 85);
+
+if(!isEq) {
+btn(x + 20, y + 95, cw - 40, 20, 'Equip', '#5522aa', '#fff', () => {
+G.player.hat = h.id;
+});
+} else {
+ctx.fillStyle = '#44ff44';
+ctx.font = 'bold 12px Courier New';
+ctx.fillText('✓ EQUIPPED', x + cw/2, y + 105);
+}
+});
+
+btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='shop';G.btns=[];});
+}
+
 // ── INTRO ──
 function drawIntro(){
 G.btns=[];
@@ -913,7 +1043,7 @@ ctx.fillStyle='rgba(255,255,255,0.75)';ctx.font='11px Courier New';ctx.textAlign
 ctx.fillText(f,fx,fy);
 });
 drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1,PLAYER_OC);
-drawBucketHat(W*0.22,H*0.7-DINOS.raptor.sz*2.2*0.55,2.0);
+drawHat(G.player?.hat || 'bucket',W*0.22,H*0.7-DINOS.raptor.sz*2.2*0.55,2.0);
 drawDino('trex',W*0.78,H*0.7,-1,G.tick,2.2,1);
 if(W>700) drawDino('pterodactyl',W*0.5,H*0.65,1,G.tick,1.8,0.8);
 const iby = H*0.78;
@@ -1147,6 +1277,8 @@ drawBattle();updateDrawParticles();
 drawIndex();
 } else if(G.state==='shop'){
 drawShop();updateDrawParticles();
+} else if(G.state==='customize'){
+drawCustomize();
 }
 }
 // ── INPUT & CHEATS ──
@@ -1248,7 +1380,7 @@ G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2
 } else if (isNew) {
 G.level = 1;
 G.wheat = 60;
-G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}};
+G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket'};
 G.playerHp = 80;
 G.discovered = {raptor:true};
 G.volcanoTimer = 10800;
