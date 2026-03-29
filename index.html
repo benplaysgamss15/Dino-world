@@ -169,11 +169,23 @@ else if(dist>0.62&&n<-0.6) t=2;
 else if(n>0.9&&dist<0.68) t=1;
 else if(dist>0.66&&dist<0.76) t=3;
 
-// Add hazard red dots on Volcanic Level
-if(isL2 && t===0 && noise(lx*3.5, ly*3.5) > 0.6) {
-// Keep a safe zone directly at spawn
-if(Math.hypot(x-WS/2, y-WS/2) > 3) {
-t=4;
+// ── VOLCANIC TERRAIN: crater + lava rivers (Level 2 only) ──
+if(isL2) {
+const vcx = WS * 0.62, vcy = WS * 0.38;
+const craterDist = Math.hypot(x - vcx, y - vcy);
+const spawnDist = Math.hypot(x - WS/2, y - WS/2);
+if(spawnDist > 4) {
+if(craterDist < 7) {
+t = 4; // Volcano crater core — always lava
+} else if(craterDist < 14 && t !== 2) {
+t = 1; // Crater rim — dark scorched rock
+} else if(t === 0) {
+// Lava rivers + scattered lava pools
+const lavaRiver = Math.sin(lx*0.45 + noise(lx*0.9, ly*0.7)*2.5) * Math.cos(ly*0.38);
+if(noise(lx*3.5, ly*3.5) > 0.5 || lavaRiver > 0.78) {
+t = 4;
+}
+}
 }
 }
 
@@ -523,13 +535,38 @@ ctx.strokeStyle=G.level===2?'rgba(120,50,20,0.5)':'rgba(180,150,60,0.4)';
 ctx.lineWidth=1;ctx.beginPath();
 ctx.arc(px+TS/2,py+TS/2,8,0,Math.PI);ctx.stroke();
 }
-// Hazard Dots Rendering
+// ── LAVA TILE RENDERING (Level 2 terrain type 4) ──
 if(t===4){
-const pulse=Math.sin(G.tick*0.08+tx*0.5+ty*0.5)*0.2+0.8;
-ctx.fillStyle=`rgba(255,100,0,${pulse})`;
-ctx.beginPath();ctx.arc(px+TS/2,py+TS/2,14,0,Math.PI*2);ctx.fill();
-ctx.fillStyle='#ffcc00';
-ctx.beginPath();ctx.arc(px+TS/2,py+TS/2,6,0,Math.PI*2);ctx.fill();
+const pulse = Math.sin(G.tick*0.07 + tx*0.6 + ty*0.4)*0.25 + 0.75;
+const flow = Math.sin(G.tick*0.04 + tx*0.3 - ty*0.2)*6;
+// Dark scorched rock base
+ctx.fillStyle = '#2a0500';
+ctx.fillRect(px, py, TS, TS);
+// Deep red lava fill
+ctx.fillStyle = 'rgba(200,40,0,' + (pulse*0.9).toFixed(2) + ')';
+ctx.fillRect(px+2, py+2, TS-4, TS-4);
+// Bright orange lava blob flowing
+ctx.fillStyle = 'rgba(255,120,0,' + (pulse*0.85).toFixed(2) + ')';
+ctx.beginPath();
+ctx.ellipse(px+TS/2, py+TS/2+flow, TS*0.38, TS*0.28, 0.3, 0, Math.PI*2);
+ctx.fill();
+// Glowing yellow hot core
+ctx.fillStyle = 'rgba(255,200,50,' + pulse.toFixed(2) + ')';
+ctx.beginPath();
+ctx.arc(px+TS/2, py+TS/2, 8, 0, Math.PI*2);
+ctx.fill();
+// Dark crack lines across the tile
+ctx.strokeStyle = 'rgba(30,5,0,0.7)';
+ctx.lineWidth = 1.5;
+ctx.beginPath();
+ctx.moveTo(px+6, py+10+flow*0.5);
+ctx.lineTo(px+TS*0.6, py+5);
+ctx.lineTo(px+TS-8, py+TS*0.6-flow*0.5);
+ctx.stroke();
+ctx.beginPath();
+ctx.moveTo(px+10, py+TS-8);
+ctx.lineTo(px+TS*0.5, py+TS*0.7+flow*0.3);
+ctx.stroke();
 }
 }
 }
