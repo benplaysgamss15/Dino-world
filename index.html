@@ -1187,9 +1187,8 @@ spawnMega();
 // ── UPDATE ──
 function update(){
 G.tick++;
-if(G.tick % 60 === 0 && G.playerHp > 0 && G.playerHp < pMaxHp()){
+if(G.state !== 'battle' && G.tick % 60 === 0 && G.playerHp > 0 && G.playerHp < pMaxHp()){
 G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.round(pMaxHp() * 0.03));
-if(G.state === 'battle' && G.battle.php > 0) G.battle.php = G.playerHp;
 }
 if(G.tick % 300 === 0 && G.state === 'world') saveGame();
 if(G.encCd>0) G.encCd--;
