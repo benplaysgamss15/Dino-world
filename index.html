@@ -21,7 +21,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;heig
 <body>
 
 <!-- HTML CHAT BALK OVERLAY -->
-<div id="chatBox" style="display:none; position:absolute; bottom:20px; left:50%; transform:translateX(-50%); width:320px; max-width:90%; z-index:100; gap:5px;">
+<div id="chatBox" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); width:320px; max-width:90%; z-index:100; gap:5px;">
     <input type="text" id="chatInp" style="flex:1; padding:12px; border-radius:8px; border:2px solid #44aa44; background:#111; color:#fff; font-family:'Courier New',monospace; font-size:16px; outline:none;" placeholder="Type message..." maxlength="50">
     <button id="chatSend" style="padding:10px 15px; background:#44aa44; color:#fff; border:none; border-radius:8px; font-weight:bold; font-family:'Courier New',monospace; font-size:16px;">Send</button>
 </div>
@@ -32,6 +32,8 @@ body{background:#000;display:flex;justify-content:center;align-items:center;heig
 const canvas = document.getElementById('gc');
 const ctx = canvas.getContext('2d');
 function resize(){
+// Prevent canvas shrinking/shifting on mobile when keyboard opens
+if(document.activeElement && document.activeElement.id === 'chatInp') return;
 canvas.width = Math.min(window.innerWidth, 1280);
 canvas.height = Math.min(window.innerHeight, 800);
 }
@@ -114,12 +116,13 @@ cheatsActive:false,  // ← cheat tracker
 
 // MULTIPLAYER VARIABLES
 peer: null,
-conn: null,
+conns: {}, // Store ALL connected players if you are the host
+isHost: false,
 peerId: null,
-otherPlayer: null,
-username: null, // ← Added for temporary username
-chatLog:[], // ← Added for Chat
-sessionTimer: null, // ← Added for auto-shutdown
+otherPlayers: {}, // Renders multiple players
+username: null, 
+chatLog:[], 
+sessionTimer: null, 
 
 volcanoTimer: 10800,
 volcanoActive: 0,
@@ -129,6 +132,8 @@ hazards:[],
 megaTimer: 3600,
 megaOnLand: false
 };
+
+let syncInterval = null; // Background sync loop
 
 // ── SAVE & LOAD SYSTEM ──
 window.activeSave = null;
@@ -685,8 +690,9 @@ G.state = 'intro';
 }
 }, '🔄');
 
-// Multiplayer Buttons
-if (!G.peerId && !(G.conn && G.conn.open)) {
+// Multiplayer Buttons (Host / Party system)
+const isConnected = G.peerId || Object.keys(G.conns).length > 0;
+if (!isConnected) {
     btn(W-100, 56, 40, 20, 'Host', '#8822cc', '#fff', hostGame);
     btn(W-55, 56, 40, 20, 'Join', '#cc2288', '#fff', joinGame);
 } else {
@@ -1243,6 +1249,15 @@ spawnMega();
 // ── UPDATE ──
 function update(){
 G.tick++;
+
+// Multiplayer / General Safety Death Check
+if (G.playerHp <= 0 && G.state === 'world') {
+    G.playerHp = pMaxHp();
+    G.wheat = Math.max(0, Math.floor(G.wheat * 0.9)); // Lose 10% buckets on death
+    G.player.x = WS/2*TS; 
+    G.player.y = WS/2*TS;
+}
+
 if(G.state !== 'battle' && G.tick % 60 === 0 && G.playerHp > 0 && G.playerHp < pMaxHp()){
 G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.round(pMaxHp() * 0.03));
 }
@@ -1290,11 +1305,6 @@ if(curTx>=0 && curTy>=0 && curTx<WS && curTy<WS && worldMap[curTy][curTx] === 4)
 if(G.tick % 30 === 0) {
 G.playerHp -= 15;
 spawnParticles(p.x, p.y, '#ff4400', 8);
-if(G.playerHp <= 0){
-G.playerHp = pMaxHp();
-G.wheat = Math.max(0, Math.floor(G.wheat * 0.9));
-p.x = WS/2*TS; p.y = WS/2*TS;
-}
 }
 }
 
@@ -1328,11 +1338,6 @@ if(h.life <= 0){
 if(Math.hypot(p.x - h.x, p.y - h.y) < 45) {
 G.playerHp -= 25;
 spawnParticles(p.x, p.y, '#ff0000', 10);
-if(G.playerHp <= 0){
-G.playerHp = pMaxHp();
-G.wheat = Math.max(0, Math.floor(G.wheat * 0.9));
-p.x = WS/2*TS; p.y = WS/2*TS;
-}
 }
 spawnParticles(h.x, h.y, '#ff6600', 25);
 G.hazards.splice(i, 1);
@@ -1404,18 +1409,21 @@ drawWorld();
 drawWilds();
 drawPlayer();
 
-// RENDER OTHER PLAYER
-if (G.otherPlayer) {
-    const op = G.otherPlayer;
+// RENDER ALL OTHER PLAYERS
+for (let id in G.otherPlayers) {
+    if (!G.isHost && G.peer && id === G.peer.id) continue; // Don't draw myself over myself
+    const op = G.otherPlayers[id];
+    if (!op) continue;
+
     const sx = op.x - G.cam.x;
     const sy = op.y - G.cam.y;
     if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
-        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75); // 0.75 opacity so you can tell who is who
+        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75); // 0.75 opacity
         const headOff = DINOS[op.dk].sz * 1.25 * 0.55;
         const bob = Math.sin(op.anim * 0.18) * 2.5;
         drawHat(op.hat || 'bucket', sx, sy - headOff + bob - 2, 1.1);
         ctx.fillStyle='#aaddff'; ctx.font='bold 12px Courier New'; ctx.textAlign='center';
-        ctx.fillText(op.name || 'Player 2', sx, sy - DINOS[op.dk].sz - 25);
+        ctx.fillText(op.name || 'Player', sx, sy - DINOS[op.dk].sz - 25);
     }
 }
 
@@ -1607,7 +1615,20 @@ function sendChatUI() {
     if(msg && msg.trim() !== '') {
         const safeName = G.username || 'You';
         addChatMessage(safeName, msg); 
-        if(G.conn && G.conn.open) G.conn.send({ type: 'chat', sender: safeName, msg: msg }); 
+        
+        if(G.isHost) {
+            // Host sends to all guests
+            for(let id in G.conns) {
+                if(G.conns[id] && G.conns[id].open) {
+                    G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
+                }
+            }
+        } else {
+            // Guest sends to host
+            if(G.conns['host'] && G.conns['host'].open) {
+                G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
+            }
+        }
     }
     chatInp.value = '';
     chatBox.style.display = 'none'; // Hide overlay again
@@ -1623,13 +1644,21 @@ chatBox.addEventListener('touchstart', e => e.stopPropagation());
 chatBox.addEventListener('touchmove', e => e.stopPropagation());
 chatBox.addEventListener('click', e => e.stopPropagation());
 
-// ── MULTIPLAYER LOGIC ──
+// ── MULTIPLAYER LOGIC (HOST & PARTY SYSTEM) ──
 function leaveGame() {
     if(G.sessionTimer) { clearTimeout(G.sessionTimer); G.sessionTimer = null; }
-    if(G.conn) { G.conn.close(); G.conn = null; }
+    if(syncInterval) { clearInterval(syncInterval); syncInterval = null; }
+    
+    // Close all connections
+    for(let id in G.conns) {
+        if(G.conns[id]) G.conns[id].close();
+    }
+    G.conns = {};
     if(G.peer) { G.peer.destroy(); G.peer = null; }
+    
     G.peerId = null;
-    G.otherPlayer = null;
+    G.otherPlayers = {};
+    G.isHost = false;
     addChatMessage('System', 'Disconnected from room.');
 }
 
@@ -1647,69 +1676,109 @@ function hostGame() {
 
     const pid = Math.floor(1000 + Math.random() * 9000).toString(); 
     G.peer = new Peer('dinoworld-' + pid);
+    G.isHost = true;
     
     G.peer.on('open', id => {
         G.peerId = pid;
-        alert('Your Room ID is: ' + pid + '\nGive this code to your friend!');
+        alert('Your Room ID is: ' + pid + '\nGive this code to friends to join the party!');
         startSessionTimer();
     });
     
     G.peer.on('connection', c => {
-        G.conn = c;
-        setupConnection();
-        addChatMessage('System', 'A friend has joined your world!');
+        G.conns[c.peer] = c;
+        addChatMessage('System', 'A player joined the party!');
+        
+        c.on('data', data => {
+            if (data.type === 'sync') {
+                G.otherPlayers[c.peer] = data.player; // Update this specific guest
+            } else if (data.type === 'chat') {
+                addChatMessage(data.sender, data.msg); 
+                // Forward the chat to all OTHER guests
+                for (let id in G.conns) {
+                    if (id !== c.peer && G.conns[id].open) {
+                        G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
+                    }
+                }
+            }
+        });
+
+        c.on('close', () => {
+            delete G.otherPlayers[c.peer];
+            delete G.conns[c.peer];
+            addChatMessage('System', 'A player left the party.');
+        });
     });
     
-    G.peer.on('error', err => { alert('Connection error. Try again.'); leaveGame(); });
+    G.peer.on('error', err => { alert('Connection error.'); leaveGame(); });
+    startSyncLoop();
 }
 
 function joinGame() {
     if(G.peer) return;
     if(!G.username) G.username = prompt("Enter a temporary username (wipes on close):") || "Guest";
 
-    const pid = prompt("Enter your friend's 4-digit Room ID:");
+    const pid = prompt("Enter the 4-digit Room ID:");
     if(!pid) return;
     
     G.peer = new Peer();
+    G.isHost = false;
+
     G.peer.on('open', () => {
-        G.conn = G.peer.connect('dinoworld-' + pid);
-        setupConnection();
-        startSessionTimer();
-        alert('Connected to Room ' + pid + '!');
+        const c = G.peer.connect('dinoworld-' + pid);
+        G.conns['host'] = c;
+
+        c.on('open', () => {
+            alert('Connected to Room ' + pid + '!');
+            startSessionTimer();
+
+            c.on('data', data => {
+                if (data.type === 'sync') {
+                    // Overwrite our list of players with the Host's master list
+                    G.otherPlayers = data.players; 
+                } else if (data.type === 'chat') {
+                    addChatMessage(data.sender, data.msg); 
+                }
+            });
+
+            c.on('close', () => {
+                addChatMessage('System', 'Host closed the room.');
+                leaveGame(); 
+            });
+        });
     });
     
     G.peer.on('error', err => { alert('Could not find room.'); leaveGame(); });
+    startSyncLoop();
 }
 
-function setupConnection() {
-    G.conn.on('data', data => {
-        if(data.type === 'sync') {
-            G.otherPlayer = data.player; 
-        } else if (data.type === 'chat') {
-            addChatMessage(data.sender, data.msg); 
-        }
-    });
+function startSyncLoop() {
+    if(syncInterval) clearInterval(syncInterval);
+    syncInterval = setInterval(() => {
+        const myData = {
+            x: G.player.x, 
+            y: G.player.y, 
+            dk: G.player.dk, 
+            face: G.player.face, 
+            anim: G.player.anim, 
+            hat: G.player.hat,
+            name: G.username
+        };
 
-    G.conn.on('close', () => {
-        G.otherPlayer = null;
-        addChatMessage('System', 'Other player left.');
-        leaveGame(); 
-    });
-    
-    setInterval(() => {
-        if(G.conn && G.conn.open) {
-            G.conn.send({
-                type: 'sync',
-                player: {
-                    x: G.player.x, 
-                    y: G.player.y, 
-                    dk: G.player.dk, 
-                    face: G.player.face, 
-                    anim: G.player.anim, 
-                    hat: G.player.hat,
-                    name: G.username
+        if (G.isHost) {
+            // Host sends everyone's data to everyone
+            const allPlayers = { host: myData };
+            for (let id in G.otherPlayers) allPlayers[id] = G.otherPlayers[id];
+
+            for (let id in G.conns) {
+                if (G.conns[id] && G.conns[id].open) {
+                    G.conns[id].send({ type: 'sync', players: allPlayers });
                 }
-            });
+            }
+        } else {
+            // Guest just sends their data to the host
+            if (G.conns['host'] && G.conns['host'].open) {
+                G.conns['host'].send({ type: 'sync', player: myData });
+            }
         }
     }, 100);
 }
