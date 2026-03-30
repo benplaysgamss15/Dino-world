@@ -728,7 +728,17 @@ ctx.fillStyle=mmCol;
 ctx.fillRect(mmx+tx2*msc,mmy+ty2*msc,msc*2+0.5,msc*2+0.5);
 }
 }
+// Draw Player on minimap
 ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(mmx+G.player.x/TS*msc,mmy+G.player.y/TS*msc,3,0,Math.PI*2);ctx.fill();
+// Draw Other Players on minimap
+for(let id in G.otherPlayers) {
+    if(!G.isHost && G.peer && id === G.peer.id) continue;
+    const op = G.otherPlayers[id];
+    if(!op) continue;
+    ctx.fillStyle='#aaddff';
+    ctx.beginPath();ctx.arc(mmx+op.x/TS*msc,mmy+op.y/TS*msc,2.5,0,Math.PI*2);ctx.fill();
+}
+// Draw Wilds on minimap
 for(const w of G.wilds){
 ctx.fillStyle=w.isBoss?'#ff3333':RARITY_COLOR[DINOS[w.key].rarity];
 ctx.beginPath();ctx.arc(mmx+w.x/TS*msc,mmy+w.y/TS*msc,w.isBoss?3:1.5,0,Math.PI*2);ctx.fill();
@@ -1616,19 +1626,21 @@ function sendChatUI() {
         const safeName = G.username || 'You';
         addChatMessage(safeName, msg); 
         
-        if(G.isHost) {
-            // Host sends to all guests
-            for(let id in G.conns) {
-                if(G.conns[id] && G.conns[id].open) {
-                    G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
+        try {
+            if(G.isHost) {
+                // Host sends to all guests
+                for(let id in G.conns) {
+                    if(G.conns[id] && G.conns[id].open) {
+                        G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
+                    }
+                }
+            } else {
+                // Guest sends to host
+                if(G.conns['host'] && G.conns['host'].open) {
+                    G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
                 }
             }
-        } else {
-            // Guest sends to host
-            if(G.conns['host'] && G.conns['host'].open) {
-                G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
-            }
-        }
+        } catch(e) { console.error("Chat send error:", e); }
     }
     chatInp.value = '';
     chatBox.style.display = 'none'; // Hide overlay again
@@ -1685,27 +1697,30 @@ function hostGame() {
     });
     
     G.peer.on('connection', c => {
-        G.conns[c.peer] = c;
-        addChatMessage('System', 'A player joined the party!');
-        
-        c.on('data', data => {
-            if (data.type === 'sync') {
-                G.otherPlayers[c.peer] = data.player; // Update this specific guest
-            } else if (data.type === 'chat') {
-                addChatMessage(data.sender, data.msg); 
-                // Forward the chat to all OTHER guests
-                for (let id in G.conns) {
-                    if (id !== c.peer && G.conns[id].open) {
-                        G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
+        // Safety handshake: Wait until connection is actually open
+        c.on('open', () => {
+            G.conns[c.peer] = c;
+            addChatMessage('System', 'A player joined the party!');
+            
+            c.on('data', data => {
+                if (data.type === 'sync') {
+                    G.otherPlayers[c.peer] = data.player; // Update this specific guest
+                } else if (data.type === 'chat') {
+                    addChatMessage(data.sender, data.msg); 
+                    // Forward the chat to all OTHER guests
+                    for (let id in G.conns) {
+                        if (id !== c.peer && G.conns[id].open) {
+                            G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        c.on('close', () => {
-            delete G.otherPlayers[c.peer];
-            delete G.conns[c.peer];
-            addChatMessage('System', 'A player left the party.');
+            c.on('close', () => {
+                delete G.otherPlayers[c.peer];
+                delete G.conns[c.peer];
+                addChatMessage('System', 'A player left the party.');
+            });
         });
     });
     
@@ -1725,9 +1740,10 @@ function joinGame() {
 
     G.peer.on('open', () => {
         const c = G.peer.connect('dinoworld-' + pid);
-        G.conns['host'] = c;
-
+        
+        // Safety handshake: Wait until connection is actually open
         c.on('open', () => {
+            G.conns['host'] = c;
             alert('Connected to Room ' + pid + '!');
             startSessionTimer();
 
@@ -1754,32 +1770,34 @@ function joinGame() {
 function startSyncLoop() {
     if(syncInterval) clearInterval(syncInterval);
     syncInterval = setInterval(() => {
-        const myData = {
-            x: G.player.x, 
-            y: G.player.y, 
-            dk: G.player.dk, 
-            face: G.player.face, 
-            anim: G.player.anim, 
-            hat: G.player.hat,
-            name: G.username
-        };
+        try {
+            const myData = {
+                x: G.player.x, 
+                y: G.player.y, 
+                dk: G.player.dk, 
+                face: G.player.face, 
+                anim: G.player.anim, 
+                hat: G.player.hat,
+                name: G.username
+            };
 
-        if (G.isHost) {
-            // Host sends everyone's data to everyone
-            const allPlayers = { host: myData };
-            for (let id in G.otherPlayers) allPlayers[id] = G.otherPlayers[id];
+            if (G.isHost) {
+                // Host sends everyone's data to everyone
+                const allPlayers = { host: myData };
+                for (let id in G.otherPlayers) allPlayers[id] = G.otherPlayers[id];
 
-            for (let id in G.conns) {
-                if (G.conns[id] && G.conns[id].open) {
-                    G.conns[id].send({ type: 'sync', players: allPlayers });
+                for (let id in G.conns) {
+                    if (G.conns[id] && G.conns[id].open) {
+                        G.conns[id].send({ type: 'sync', players: allPlayers });
+                    }
+                }
+            } else {
+                // Guest just sends their data to the host
+                if (G.conns['host'] && G.conns['host'].open) {
+                    G.conns['host'].send({ type: 'sync', player: myData });
                 }
             }
-        } else {
-            // Guest just sends their data to the host
-            if (G.conns['host'] && G.conns['host'].open) {
-                G.conns['host'].send({ type: 'sync', player: myData });
-            }
-        }
+        } catch(e) { console.error("Sync error:", e); }
     }, 100);
 }
 
