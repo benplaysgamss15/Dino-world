@@ -20,6 +20,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;heig
 </head>
 <body>
 <canvas id="gc"></canvas>
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 const canvas = document.getElementById('gc');
 const ctx = canvas.getContext('2d');
@@ -103,6 +104,14 @@ mx:-1,my:-1,
 particles:[],
 swapCd:0,
 cheatsActive:false,  // ← cheat tracker
+
+// MULTIPLAYER VARIABLES
+peer: null,
+conn: null,
+peerId: null,
+otherPlayer: null,
+chatLog:[], // ← Added for Chat
+sessionTimer: null, // ← Added for auto-shutdown
 
 volcanoTimer: 10800,
 volcanoActive: 0,
@@ -667,6 +676,16 @@ G.state = 'intro';
 }
 }, '🔄');
 
+// Multiplayer Buttons
+if (!G.peerId && !(G.conn && G.conn.open)) {
+    btn(W-100, 56, 40, 20, 'Host', '#8822cc', '#fff', hostGame);
+    btn(W-55, 56, 40, 20, 'Join', '#cc2288', '#fff', joinGame);
+} else {
+    btn(W-100, 56, 85, 20, 'Leave Room', '#aa2222', '#fff', leaveGame);
+    ctx.fillStyle='#fff'; ctx.font='bold 12px Courier New'; ctx.textAlign='right';
+    ctx.fillText(G.peerId ? 'Room: '+G.peerId : 'Connected', W-15, 88);
+}
+
 // Bottom buttons
 const bw=108,bh=44,gap=10,by=H-58;
 const total=3*(bw+gap)-gap;
@@ -705,6 +724,36 @@ if(G.encCd>0){
 ctx.fillStyle='rgba(255,220,0,0.85)';ctx.font='bold 13px Courier New';ctx.textAlign='center';ctx.textBaseline='bottom';
 ctx.fillText('⛨ Safe Zone',W/2,H-65);
 }
+
+// ── CHAT BUTTON & RENDER ──
+btn(16, H-120, 65, 40, 'Chat', '#44aa44', '#fff', () => {
+    const msg = prompt("Type your message:");
+    if(msg && msg.trim() !== '') {
+        addChatMessage('You', msg); // Show it on your screen
+        if(G.conn && G.conn.open) G.conn.send({ type: 'chat', msg: msg }); // Send to friend
+    }
+}, '💬');
+
+// Draw Minecraft-style Chat Log
+let chatY = H - 135; 
+for (let i = 0; i < G.chatLog.length; i++) {
+    const c = G.chatLog[i];
+    c.life--;
+    if (c.life > 0) {
+        ctx.globalAlpha = Math.min(1, c.life / 30);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.font = 'bold 13px Courier New';
+        const tw = ctx.measureText(c.text).width + 10;
+        ctx.fillRect(16, chatY - 10, tw, 20);
+        ctx.fillStyle = c.text.startsWith('You:') ? '#aaddff' : '#ffddaa';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(c.text, 21, chatY);
+        chatY -= 22;
+        ctx.globalAlpha = 1;
+    }
+}
+if(G.tick % 60 === 0) G.chatLog = G.chatLog.filter(c => c.life > 0);
+
 }
 // ── BATTLE ──
 function drawBattle(){
@@ -1347,6 +1396,22 @@ if(G.camShake > 0) ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10)
 drawWorld();
 drawWilds();
 drawPlayer();
+
+// RENDER OTHER PLAYER
+if (G.otherPlayer) {
+    const op = G.otherPlayer;
+    const sx = op.x - G.cam.x;
+    const sy = op.y - G.cam.y;
+    if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
+        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75); // 0.75 opacity so you can tell who is who
+        const headOff = DINOS[op.dk].sz * 1.25 * 0.55;
+        const bob = Math.sin(op.anim * 0.18) * 2.5;
+        drawHat(op.hat || 'bucket', sx, sy - headOff + bob - 2, 1.1);
+        ctx.fillStyle='#aaddff'; ctx.font='bold 12px Courier New'; ctx.textAlign='center';
+        ctx.fillText('Player 2', sx, sy - DINOS[op.dk].sz - 25);
+    }
+}
+
 drawHazards();
 updateDrawParticles();
 ctx.restore();
@@ -1495,6 +1560,109 @@ G.cam.x = Math.max(0, Math.min(WS*TS-canvas.width, G.player.x - canvas.width/2))
 G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2));
 }
 G.state = 'world';
+}
+
+// ── CHAT SYSTEM ──
+function filterMessage(msg) {
+    // Add any words you want to filter here
+    const badWords =['fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap']; 
+    let cleanMsg = msg;
+    const regex = new RegExp(badWords.join('|'), 'gi');
+    return cleanMsg.replace(regex, '****');
+}
+
+function addChatMessage(sender, msg) {
+    const safeMsg = filterMessage(msg);
+    // Add to start of array, life is 350 frames (about 6 seconds before it fades)
+    G.chatLog.unshift({ text: sender + ': ' + safeMsg, life: 350 }); 
+    if (G.chatLog.length > 6) G.chatLog.pop(); // Keep only last 6 messages
+}
+
+// ── MULTIPLAYER LOGIC ──
+function leaveGame() {
+    if(G.sessionTimer) { clearTimeout(G.sessionTimer); G.sessionTimer = null; }
+    if(G.conn) { G.conn.close(); G.conn = null; }
+    if(G.peer) { G.peer.destroy(); G.peer = null; }
+    G.peerId = null;
+    G.otherPlayer = null;
+    addChatMessage('System', 'Disconnected from room.');
+}
+
+function startSessionTimer() {
+    if(G.sessionTimer) clearTimeout(G.sessionTimer);
+    G.sessionTimer = setTimeout(() => {
+        alert("The 1-hour multiplayer limit has been reached. Disconnecting.");
+        leaveGame();
+    }, 3600000); // 3,600,000 ms = 1 hour
+}
+
+function hostGame() {
+    if(G.peer) return;
+    const pid = Math.floor(1000 + Math.random() * 9000).toString(); // Generate 4-digit code
+    G.peer = new Peer('dinoworld-' + pid);
+    
+    G.peer.on('open', id => {
+        G.peerId = pid;
+        alert('Your Room ID is: ' + pid + '\nGive this code to your friend!');
+        startSessionTimer();
+    });
+    
+    G.peer.on('connection', c => {
+        G.conn = c;
+        setupConnection();
+        addChatMessage('System', 'A friend has joined your world!');
+    });
+    
+    G.peer.on('error', err => { alert('Connection error. Try again.'); leaveGame(); });
+}
+
+function joinGame() {
+    if(G.peer) return;
+    const pid = prompt("Enter your friend's 4-digit Room ID:");
+    if(!pid) return;
+    
+    G.peer = new Peer();
+    G.peer.on('open', () => {
+        G.conn = G.peer.connect('dinoworld-' + pid);
+        setupConnection();
+        startSessionTimer();
+        alert('Connected to Room ' + pid + '!');
+    });
+    
+    G.peer.on('error', err => { alert('Could not find room.'); leaveGame(); });
+}
+
+function setupConnection() {
+    G.conn.on('data', data => {
+        if(data.type === 'sync') {
+            G.otherPlayer = data.player; // Update friend's position
+        } else if (data.type === 'chat') {
+            addChatMessage('Player 2', data.msg); // Receive chat
+        }
+    });
+
+    G.conn.on('close', () => {
+        G.otherPlayer = null;
+        addChatMessage('System', 'Other player left.');
+        leaveGame(); // Cleanly close our end if they drop
+    });
+    
+    // Send our position to our friend 10 times a second
+    setInterval(() => {
+        if(G.conn && G.conn.open) {
+            G.conn.send({
+                type: 'sync',
+                player: {
+                    x: G.player.x, 
+                    y: G.player.y, 
+                    dk: G.player.dk, 
+                    face: G.player.face, 
+                    anim: G.player.anim, 
+                    hat: G.player.hat
+                }
+            });
+        }
+    }, 100);
 }
 
 function loop(){update();render();requestAnimationFrame(loop);}
