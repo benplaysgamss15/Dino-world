@@ -16,11 +16,25 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'Courier New',Courier,monospace}
 #gc{display:block;image-rendering:pixelated;cursor:crosshair;touch-action:none}
+
+/* Chat Scrollbar Styling */
+.chat-msg {
+    background: rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 4px;
+    font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold;
+    text-shadow: 1px 1px 0 #000; word-wrap: break-word; flex-shrink: 0;
+}
+#chatMessages::-webkit-scrollbar { width: 6px; }
+#chatMessages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<!-- HTML CHAT BALK OVERLAY -->
+<!-- HTML CHAT HISTORY OVERLAY -->
+<div id="chatContainer" style="position:absolute; top:20px; left:20px; width:320px; max-width:50%; height:250px; display:flex; flex-direction:column; justify-content:flex-end; pointer-events:none; z-index:50;">
+    <div id="chatMessages" style="overflow-y:auto; max-height:100%; display:flex; flex-direction:column; gap:4px; padding-right:5px; transition:opacity 0.3s; opacity:0;"></div>
+</div>
+
+<!-- HTML CHAT INPUT OVERLAY -->
 <div id="chatBox" style="display:none; position:absolute; top:20px; left:50%; transform:translateX(-50%); width:320px; max-width:90%; z-index:100; gap:5px;">
     <input type="text" id="chatInp" style="flex:1; padding:12px; border-radius:8px; border:2px solid #44aa44; background:#111; color:#fff; font-family:'Courier New',monospace; font-size:16px; outline:none;" placeholder="Type message..." maxlength="50">
     <button id="chatSend" style="padding:10px 15px; background:#44aa44; color:#fff; border:none; border-radius:8px; font-weight:bold; font-family:'Courier New',monospace; font-size:16px;">Send</button>
@@ -55,7 +69,18 @@ const TS = 48;
 const WS = 160;
 const LERP = 0.1;
 const RARITY_COLOR = {Common:'#aaaaaa',Rare:'#4488ff',Epic:'#cc44ff',Legendary:'#ffaa00',Boss:'#ff3333'};
-const PLAYER_OC = {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'};
+
+// ── CUSTOM COLORS PALETTE ──
+const PALETTES =[
+    { id:'blue', name:'Blue', oc:{body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'} },
+    { id:'red', name:'Red', oc:{body:'#ff4040',legs:'#7a1a1a',head:'#ffd700',neck:'#ffd700',tail:'#cc2a2a'} },
+    { id:'green', name:'Green', oc:{body:'#40ff40',legs:'#1a7a1a',head:'#ffd700',neck:'#ffd700',tail:'#2acc2a'} },
+    { id:'purple', name:'Purple', oc:{body:'#c440ff',legs:'#4a1a7a',head:'#ffd700',neck:'#ffd700',tail:'#9a2acc'} },
+    { id:'dark', name:'Dark', oc:{body:'#444444',legs:'#111111',head:'#aa0000',neck:'#aa0000',tail:'#222222'} }
+];
+function getOC(cId) {
+    return PALETTES.find(p=>p.id===cId)?.oc || PALETTES[0].oc;
+}
 
 const DINOS = {
 // ── LEVEL 1 DINOS ──
@@ -110,11 +135,13 @@ state:'intro',
 level: 1,
 wheat:60, tick:0,
 cam:{x:0,y:0},
-player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket'},
+player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', colorId:'blue'},
 playerHp:80,
+playerShield: 0,
+lastDamageTick: 0,
 discovered:{raptor:true},
 wilds:[],
-battle:{ek:null,ehp:0,emhp:0,php:0,pmhp:0,turn:'player',log:[],anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:false},
+battle:{ek:null,ehp:0,emhp:0,php:0,pmhp:0,php_shield:0,pmhp_shield:0,turn:'player',log:[],anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:false},
 keys:{},
 joy:{on:false,sx:0,sy:0,dx:0,dy:0},
 btns:[],
@@ -123,16 +150,15 @@ idxPage:0,
 mx:-1,my:-1,
 particles:[],
 swapCd:0,
-cheatsActive:false,  // ← cheat tracker
+cheatsActive:false,  
 
 // MULTIPLAYER VARIABLES
 peer: null,
-conns: {}, // Store ALL connected players if you are the host
+conns: {}, 
 isHost: false,
 peerId: null,
-otherPlayers: {}, // Renders multiple players
+otherPlayers: {}, 
 username: null, 
-chatLog:[], 
 sessionTimer: null, 
 
 volcanoTimer: 10800,
@@ -144,7 +170,7 @@ megaTimer: 3600,
 megaOnLand: false
 };
 
-let syncInterval = null; // Background sync loop
+let syncInterval = null; 
 
 // ── SAVE & LOAD SYSTEM ──
 window.activeSave = null;
@@ -172,12 +198,12 @@ level: G.level,
 wheat: G.wheat,
 player: G.player,
 playerHp: G.playerHp,
+playerShield: G.playerShield,
 discovered: G.discovered,
 volcanoTimer: G.volcanoTimer,
 megaTimer: G.megaTimer,
 megaOnLand: G.megaOnLand
 };
-// Note: G.username is intentionally NOT saved here. It stays temporary.
 localStorage.setItem('dinoworld_save', JSON.stringify(data));
 } catch (e) { console.error("Save error", e); }
 }
@@ -645,13 +671,18 @@ const p=G.player;
 const sx=p.x-G.cam.x, sy=p.y-G.cam.y;
 const asz=10, ay=sy-DINOS[p.dk].sz-32+Math.sin(G.tick*0.08)*4;
 ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(sx,ay);ctx.lineTo(sx-asz,ay-asz);ctx.lineTo(sx+asz,ay-asz);ctx.fill();
-drawDino(p.dk,sx,sy,p.face,p.anim,1.25,1,PLAYER_OC);
+drawDino(p.dk,sx,sy,p.face,p.anim,1.25,1,getOC(p.colorId));
 const headOff=DINOS[p.dk].sz*1.25*0.55;
 const bob=Math.sin(p.anim*0.18)*2.5;
 drawHat(G.player.hat || 'bucket',sx,sy-headOff+bob-2,1.1);
+
+// HP and Shield Bar
 const pct=G.playerHp/pMaxHp();
 const col=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
 hpBar(sx-28,sy-DINOS[p.dk].sz-18,56,8,G.playerHp,pMaxHp(),col);
+if (G.playerShield > 0) {
+    hpBar(sx-28,sy-DINOS[p.dk].sz-26,56,6,G.playerShield,Math.floor(pMaxHp()*0.4),'#44aaff');
+}
 }
 // ── HUD ──
 function drawHUD(){
@@ -686,10 +717,13 @@ ctx.fillStyle=RARITY_COLOR[d.rarity];ctx.shadowColor=RARITY_COLOR[d.rarity];ctx.
 ctx.font='bold 15px Courier New';ctx.textAlign='center';
 ctx.fillText(`${d.em} ${d.name}[${d.rarity}]`,W/2,G.cheatsActive?18:26);ctx.shadowBlur=0;
 
-// HP bar
+// HP and Shield bar
 const pct=G.playerHp/pMaxHp();
 const hcol=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
 hpBar(W-195,12,180,16,G.playerHp,pMaxHp(),hcol,`HP ${G.playerHp}/${pMaxHp()}`);
+if (G.playerShield > 0) {
+    hpBar(W-195,30,180,10,G.playerShield,Math.floor(pMaxHp()*0.4),'#44aaff',`SHIELD`);
+}
 
 // Restart button in HUD
 btn(W-100, 32, 85, 20, 'Restart', '#aa2222', '#fff', () => {
@@ -718,9 +752,16 @@ const total=3*(bw+gap)-gap;
 const bsx=(W-total)/2;
 btn(bsx, by,bw,bh,'Index', '#2255cc','#fff',()=>{G.state='index';G.idxPage=0;G.btns=[];},'📘');
 btn(bsx+bw+gap,by,bw,bh,'Shop', '#cc5522','#fff',()=>{G.state='shop';G.btns=[];},'🛒');
-btn(bsx+2*(bw+gap),by,bw,bh,'Heal (15🪣)','#225522','#fff',()=>{
-if(G.wheat>=15&&G.playerHp<pMaxHp()){G.wheat-=15;G.playerHp=Math.min(pMaxHp(),G.playerHp+40);spawnParticles(W/2,H-80,'#44ff44',8);}
-},'💊');
+
+// Shield button
+btn(bsx+2*(bw+gap),by,bw,bh,'Shield (15🪣)','#225588','#fff',()=>{
+const maxS = Math.floor(pMaxHp()*0.4);
+if(G.wheat>=15 && G.playerShield < maxS){
+    G.wheat-=15; G.playerShield = maxS;
+    spawnParticles(W/2,H-80,'#44aaff',12);
+}
+},'🛡️');
+
 // Minimap
 const mm=90, mmx=W-mm-8, mmy=H-mm-65;
 ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(mmx,mmy,mm,mm);
@@ -762,32 +803,12 @@ ctx.fillText('⛨ Safe Zone',W/2,H-65);
 }
 
 // ── CHAT BUTTON & RENDER ──
-btn(16, H-120, 65, 40, 'Chat', '#44aa44', '#fff', () => {
-    // Reveal the HTML chat balk overlay
+btn(16, H-80, 65, 40, 'Chat', '#44aa44', '#fff', () => {
     document.getElementById('chatBox').style.display = 'flex';
     document.getElementById('chatInp').focus();
+    document.getElementById('chatMessages').style.pointerEvents = 'auto';
+    wakeChat();
 }, '💬');
-
-// Draw Minecraft-style Chat Log
-let chatY = H - 135; 
-for (let i = 0; i < G.chatLog.length; i++) {
-    const c = G.chatLog[i];
-    c.life--;
-    if (c.life > 0) {
-        ctx.globalAlpha = Math.min(1, c.life / 30);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.font = 'bold 13px Courier New';
-        const tw = ctx.measureText(c.text).width + 10;
-        ctx.fillRect(16, chatY - 10, tw, 20);
-        ctx.fillStyle = c.text.startsWith((G.username || 'You') + ':') ? '#aaddff' : '#ffddaa';
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(c.text, 21, chatY);
-        chatY -= 22;
-        ctx.globalAlpha = 1;
-    }
-}
-if(G.tick % 60 === 0) G.chatLog = G.chatLog.filter(c => c.life > 0);
-
 }
 // ── BATTLE ──
 function drawBattle(){
@@ -832,12 +853,16 @@ ctx.fillStyle=RARITY_COLOR[en.rarity];ctx.font='bold 14px Courier New';ctx.textA
 ctx.fillText(`${en.em} ${en.name}`,W*0.46+4,42);
 const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
 const pDk=G.player.dk;
-drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1,PLAYER_OC);
+drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1,getOC(G.player.colorId));
 const bpHeadY=H*0.52-DINOS[pDk].sz*1.65*0.55;
 drawHat(G.player.hat || 'bucket',W*0.28+pshake,bpHeadY,1.5);
 const phPct=b.php/b.pmhp;
 const phCol=phPct>0.5?'#44cc44':phPct>0.25?'#cccc44':'#cc4444';
 hpBar(W*0.05,H*0.68,W*0.36,18,b.php,b.pmhp,phCol,`${b.php}/${b.pmhp}`);
+if (b.php_shield > 0) {
+    hpBar(W*0.05,H*0.68+20,W*0.36,10,b.php_shield,Math.floor(b.pmhp*0.4),'#44aaff',`SHIELD`);
+}
+
 const pd=pDino();
 ctx.fillStyle='#aaffaa';ctx.font='bold 13px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 ctx.fillText(`${pd.em} ${pd.name} [YOU]`,W*0.05,H*0.68-14);
@@ -872,6 +897,7 @@ spawnWilds();
 spawnMega();
 G.player.x = WS/2*TS; G.player.y = WS/2*TS;
 G.playerHp = pMaxHp();
+G.playerShield = 0;
 G.volcanoTimer = 10800;
 G.volcanoActive = 0; G.hazards =[];
 G.cam.x = G.player.x - canvas.width/2;
@@ -902,6 +928,7 @@ const en=DINOS[ek];
 G.state='battle';
 Object.assign(G.battle,{
 ek,ehp:en.hp,emhp:en.hp,php:G.playerHp,pmhp:pMaxHp(),
+php_shield:G.playerShield,pmhp_shield:Math.floor(pMaxHp()*0.4),
 turn:'player',log:[isBoss?`⚠️ BOSS: ${en.name} appears!`:`Wild ${en.name} appeared!`],
 anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:!!isBoss
 });
@@ -941,7 +968,17 @@ const en=DINOS[b.ek];
 let dmg=Math.max(1,en.atk+Math.floor(Math.random()*10)-5);
 if(b.ek === 'megalodon') dmg = 50 + Math.floor(Math.random() * 11);
 else if(b.ek === 'indominus') dmg = 70 + Math.floor(Math.random() * 31);
-b.php=Math.max(0,b.php-dmg);G.playerHp=b.php;b.pshake=18;
+
+if (b.php_shield >= dmg) {
+    b.php_shield -= dmg;
+} else {
+    b.php -= (dmg - b.php_shield);
+    b.php_shield = 0;
+}
+G.playerHp = Math.max(0, b.php);
+G.playerShield = b.php_shield;
+
+b.pshake=18;
 b.dnums.push({x:canvas.width*0.28,y:canvas.height*0.52,val:dmg,col:'#ff8844',life:60});
 b.log.unshift(`${en.name} attacks for ${dmg}!`);if(b.log.length>5)b.log.pop();
 spawnParticles(canvas.width*0.28,canvas.height*0.52,'#ff8844',6);
@@ -961,6 +998,7 @@ else{b.log.unshift("Can't escape!");b.turn='enemy';setTimeout(enemyTurn,350);}
 function exitBattle(){
 G.state='world';
 G.playerHp=G.battle.res==='lose'?pMaxHp():Math.max(5,G.battle.php);
+G.lastDamageTick = G.tick; // Reset healing timer
 G.encCd=200;G.btns=[];
 }
 // ── INDEX ──
@@ -996,7 +1034,7 @@ isCur?'rgba(20,60,20,0.95)':found?'rgba(12,25,55,0.9)':'rgba(8,12,25,0.7)',
 isCur?'#44ff44':found?RARITY_COLOR[dn.rarity]:'#282838',2);
 if(found){
 ctx.save();ctx.beginPath();ctx.rect(cx-cw/2+6,cy-55,cw-12,80);ctx.clip();
-const idxOc=isCur?PLAYER_OC:null;
+const idxOc=isCur?getOC(G.player.colorId):null;
 drawDino(key,cx,cy-18,1,G.tick*0.5,0.65,1,idxOc);ctx.restore();
 } else {
 ctx.fillStyle='rgba(60,60,100,0.8)';ctx.font='40px Courier New';
@@ -1008,12 +1046,15 @@ if(found){
 ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx-28,cy+45,56,13);
 ctx.fillStyle=RARITY_COLOR[dn.rarity];ctx.font='8px Courier New';ctx.fillText(dn.rarity,cx,cy+58);
 if(!isCur) btn(cx-32,cy+61,64,22,'Equip','#1a3a88','#fff',()=>{
-if(G.swapCd>0) return;
-const oldHp = G.playerHp;
+if(G.swapCd>0) {
+    addChatMessage('System', `Cooldown! Wait ${Math.ceil(G.swapCd/60)}s to switch.`);
+    return;
+}
+const oldHpPct = G.playerHp / pMaxHp();
 G.player.dk=key;
-const newMax = pMaxHp();
-G.playerHp = Math.min(oldHp, newMax);
-G.swapCd = 3600;
+G.playerHp = Math.max(1, Math.floor(pMaxHp() * oldHpPct));
+G.playerShield = Math.min(G.playerShield, Math.floor(pMaxHp() * 0.4));
+G.swapCd = 120; // 2 seconds
 const ttx = Math.floor(G.player.x/TS);
 const tty = Math.floor(G.player.y/TS);
 const canSwim =['spinosaurus','pterodactyl','megalodon','mosasaurus'].includes(key);
@@ -1021,6 +1062,7 @@ if(worldMap[tty] && worldMap[tty][ttx] === 2 && !canSwim){
 G.player.x = WS/2*TS;
 G.player.y = WS/2*TS;
 }
+addChatMessage('System', `Equipped ${DINOS[key].name}!`);
 });
 else{ctx.fillStyle='#44ff44';ctx.font='bold 9px Courier New';ctx.textBaseline='middle';ctx.fillText('✓ ACTIVE',cx,cy+72);}
 }
@@ -1091,14 +1133,14 @@ ctx.fillStyle=upg.col;ctx.beginPath();ctx.arc(x+9+l*11,y+ch-12,4,0,Math.PI*2);ct
 }
 });
 const hy=65+ch+20, hcost=30;
-const hcan=G.wheat>=hcost&&G.playerHp<pMaxHp();
+const hcan=G.wheat>=hcost&&G.playerShield < Math.floor(pMaxHp()*0.4);
 const hw=Math.min(320,W-60), hx=(W-hw)/2;
 rr(hx,hy,hw,80,10,'rgba(0,30,0,0.95)',hcan?'#44aa44':'#1a2a1a',2);
-ctx.font='24px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('💊',hx+hw/2,hy+10);
-ctx.fillStyle='#aaffaa';ctx.font='bold 14px Courier New';ctx.textBaseline='top';ctx.fillText('Full Heal',hx+hw/2,hy+42);
+ctx.font='24px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('🛡️',hx+hw/2,hy+10);
+ctx.fillStyle='#aaffaa';ctx.font='bold 14px Courier New';ctx.textBaseline='top';ctx.fillText('Max Shield',hx+hw/2,hy+42);
 ctx.fillStyle='#aaddff';ctx.font='13px Courier New';ctx.fillText(`Cost: 🪣 ${hcost}`,hx+hw/2,hy+60);
 btn(hx+hw/2-55,hy+6,110,66,'',hcan?'rgba(0,60,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
-if(G.wheat>=hcost&&G.playerHp<pMaxHp()){G.wheat-=hcost;G.playerHp=pMaxHp();spawnParticles(W/2,H/2,'#44ff44',14);}
+if(G.wheat>=hcost&&G.playerShield<Math.floor(pMaxHp()*0.4)){G.wheat-=hcost;G.playerShield=Math.floor(pMaxHp()*0.4);spawnParticles(W/2,H/2,'#44aaff',14);}
 });
 
 const custY = hy + 90;
@@ -1136,7 +1178,7 @@ const hats =[
 const px = W/2;
 const py = 190;
 const pDk = G.player.dk;
-drawDino(pDk, px, py, 1, G.tick, 2.5, 1, PLAYER_OC);
+drawDino(pDk, px, py, 1, G.tick, 2.5, 1, getOC(G.player.colorId));
 const headOff = DINOS[pDk].sz * 2.5 * 0.55;
 const bob = Math.sin(G.tick * 0.18) * 2.5;
 drawHat(G.player.hat || 'bucket', px, py - headOff + bob - 2, 2.2);
@@ -1173,6 +1215,25 @@ ctx.fillText('✓ EQUIPPED', x + cw/2, y + 105);
 }
 });
 
+// Color Selection
+const colsY = sy + 2*(ch + 20) + 10;
+ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Courier New';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText('Skin Color:', W/2, colsY - 20);
+
+PALETTES.forEach((pal, i) => {
+    const cx = W/2 - ((PALETTES.length-1)*25) + i*50;
+    const isEq = (G.player.colorId || 'blue') === pal.id;
+    ctx.fillStyle = pal.oc.body;
+    ctx.beginPath(); ctx.arc(cx, colsY + 15, 18, 0, Math.PI*2); ctx.fill();
+    if(isEq) {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    btn(cx-20, colsY-5, 40, 40, '', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', () => {
+        G.player.colorId = pal.id;
+    });
+});
+
 btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='shop';G.btns=[];});
 }
 
@@ -1204,7 +1265,7 @@ rr(fx-54,fy-14,108,28,6,'rgba(255,255,255,0.06)','rgba(255,255,255,0.14)',1);
 ctx.fillStyle='rgba(255,255,255,0.75)';ctx.font='11px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.fillText(f,fx,fy);
 });
-drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1,PLAYER_OC);
+drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1,getOC(G.player?.colorId || 'blue'));
 drawHat(G.player?.hat || 'bucket',W*0.22,H*0.7-DINOS.raptor.sz*2.2*0.55,2.0);
 drawDino('trex',W*0.78,H*0.7,-1,G.tick,2.2,1);
 if(W>700) drawDino('pterodactyl',W*0.5,H*0.65,1,G.tick,1.8,0.8);
@@ -1274,14 +1335,19 @@ G.tick++;
 // Multiplayer / General Safety Death Check
 if (G.playerHp <= 0 && G.state === 'world') {
     G.playerHp = pMaxHp();
+    G.playerShield = 0;
     G.wheat = Math.max(0, Math.floor(G.wheat * 0.9)); // Lose 10% buckets on death
     G.player.x = WS/2*TS; 
     G.player.y = WS/2*TS;
 }
 
-if(G.state !== 'battle' && G.tick % 60 === 0 && G.playerHp > 0 && G.playerHp < pMaxHp()){
-G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.round(pMaxHp() * 0.03));
+// Passive Healing (After 2s of no damage, heal 2% every 2.5s)
+if(G.state === 'world' && (G.tick - G.lastDamageTick >= 120) && G.playerHp > 0 && G.playerHp < pMaxHp()){
+    if (G.tick % 150 === 0) {
+        G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.max(1, Math.round(pMaxHp() * 0.02)));
+    }
 }
+
 if(G.tick % 300 === 0 && G.state === 'world') saveGame();
 if(G.encCd>0) G.encCd--;
 if(G.swapCd>0) G.swapCd--;
@@ -1324,8 +1390,11 @@ G.cam.y=Math.max(0,Math.min(WS*TS-canvas.height,G.cam.y));
 const curTx = Math.floor(p.x/TS), curTy = Math.floor(p.y/TS);
 if(curTx>=0 && curTy>=0 && curTx<WS && curTy<WS && worldMap[curTy][curTx] === 4) {
 if(G.tick % 30 === 0) {
-G.playerHp -= 15;
-spawnParticles(p.x, p.y, '#ff4400', 8);
+    let dmg = 15;
+    if (G.playerShield >= dmg) G.playerShield -= dmg;
+    else { G.playerHp -= (dmg - G.playerShield); G.playerShield = 0; }
+    G.lastDamageTick = G.tick;
+    spawnParticles(p.x, p.y, '#ff4400', 8);
 }
 }
 
@@ -1357,8 +1426,11 @@ const h = G.hazards[i];
 h.life--;
 if(h.life <= 0){
 if(Math.hypot(p.x - h.x, p.y - h.y) < 45) {
-G.playerHp -= 25;
-spawnParticles(p.x, p.y, '#ff0000', 10);
+    let dmg = 25;
+    if (G.playerShield >= dmg) G.playerShield -= dmg;
+    else { G.playerHp -= (dmg - G.playerShield); G.playerShield = 0; }
+    G.lastDamageTick = G.tick;
+    spawnParticles(p.x, p.y, '#ff0000', 10);
 }
 spawnParticles(h.x, h.y, '#ff6600', 25);
 G.hazards.splice(i, 1);
@@ -1439,7 +1511,7 @@ for (let id in G.otherPlayers) {
     const sx = op.x - G.cam.x;
     const sy = op.y - G.cam.y;
     if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
-        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75); // 0.75 opacity
+        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75, getOC(op.colorId)); // 0.75 opacity
         const headOff = DINOS[op.dk].sz * 1.25 * 0.55;
         const bob = Math.sin(op.anim * 0.18) * 2.5;
         drawHat(op.hat || 'bucket', sx, sy - headOff + bob - 2, 1.1);
@@ -1487,24 +1559,24 @@ const c = code.trim().toLowerCase();
 if(c === 'dev_money') {
 G.wheat += 999999;
 G.cheatsActive = true;
-alert("Cheat Activated: +999,999 Buckets");
+addChatMessage('System', "Cheat Activated: +999,999 Buckets");
 } else if(c === 'dev_dinos') {
 for(let k in DINOS) G.discovered[k] = true;
 G.cheatsActive = true;
-alert("Cheat Activated: All Dinos Unlocked");
+addChatMessage('System', "Cheat Activated: All Dinos Unlocked");
 } else if(c === 'dev_god') {
 G.player.upg.hp = 99;
 G.player.upg.atk = 99;
 G.player.upg.spd = 99;
 G.playerHp = pMaxHp();
 G.cheatsActive = true;
-alert("Cheat Activated: GOD MODE");
+addChatMessage('System', "Cheat Activated: GOD MODE");
 } else if(c === 'dev_lvl2') {
 G.level = 2; G.discovered = {utahraptor: true}; G.player.dk = 'utahraptor';
 generateWorld(); spawnWilds(); spawnMega(); G.playerHp = pMaxHp();
 G.volcanoTimer = 10800; G.volcanoActive = 0; G.hazards =[];
 G.cheatsActive = true;
-alert("Cheat Activated: Teleported to Level 2 (Volcano Map)");
+addChatMessage('System', "Cheat Activated: Teleported to Volcano Map");
 }
 }
 
@@ -1523,6 +1595,10 @@ const r=canvas.getBoundingClientRect();
 G.mx=e.clientX-r.left;G.my=e.clientY-r.top;
 });
 canvas.addEventListener('click',e=>{
+if(document.getElementById('chatBox').style.display === 'flex' && e.clientY > 100) {
+    closeChatUI();
+    return;
+}
 const r=canvas.getBoundingClientRect();
 const cx=e.clientX-r.left, cy=e.clientY-r.top;
 if(G.state==='intro'){
@@ -1563,6 +1639,7 @@ G.level = s.level || 1;
 G.wheat = s.wheat || 60;
 G.player = s.player;
 G.playerHp = s.playerHp;
+G.playerShield = s.playerShield || 0;
 G.discovered = s.discovered;
 G.volcanoTimer = s.volcanoTimer || 10800;
 G.megaTimer = s.megaTimer || 3600;
@@ -1576,8 +1653,9 @@ G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2
 } else if (isNew) {
 G.level = 1;
 G.wheat = 60;
-G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket'};
+G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', colorId:'blue'};
 G.playerHp = 80;
+G.playerShield = 0;
 G.discovered = {raptor:true};
 G.volcanoTimer = 10800;
 G.megaTimer = 3600;
@@ -1600,36 +1678,55 @@ G.state = 'world';
 function filterMessage(msg) {
     const badWords =['fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'dumbass', 'nigger', 'nigga', 'cunt', 'slut', 'whore', 'faggot', 'dick', 'cock', 'pussy', 'bastard'];
     
-    // Convert common leetspeak bypasses to letters
     const leetMap = { '@':'a', '4':'a', '3':'e', '1':'i', '!':'i', '0':'o', '5':'s', '$':'s', '7':'t', '8':'b', '+':'t' };
     
     let leeted = msg.toLowerCase();
-    for (let k in leetMap) {
-        leeted = leeted.split(k).join(leetMap[k]);
-    }
+    for (let k in leetMap) leeted = leeted.split(k).join(leetMap[k]);
     
-    // Aggressively strip all spaces, underscores, dashes, dots, etc.
     let testStrClean = leeted.replace(/[\s\W_]+/g, ''); 
     
-    // Check if the compressed string contains any bad words
     for (let i = 0; i < badWords.length; i++) {
-        if (testStrClean.includes(badWords[i])) {
-            return "****"; // Instantly ban the entire message
-        }
+        if (testStrClean.includes(badWords[i])) return "****"; 
     }
-    return msg; // Return original if clean
+    return msg; 
+}
+
+let chatFadeTimer;
+function wakeChat() {
+    const msgs = document.getElementById('chatMessages');
+    msgs.style.opacity = '1';
+    clearTimeout(chatFadeTimer);
+    chatFadeTimer = setTimeout(() => {
+        if(document.getElementById('chatBox').style.display === 'none') msgs.style.opacity = '0';
+    }, 8000);
 }
 
 function addChatMessage(sender, msg) {
     const safeMsg = filterMessage(msg);
-    G.chatLog.unshift({ text: sender + ': ' + safeMsg, life: 350 }); 
-    if (G.chatLog.length > 6) G.chatLog.pop(); 
+    const msgEl = document.createElement('div');
+    msgEl.className = 'chat-msg';
+    msgEl.style.color = sender === (G.username || 'You') ? '#aaddff' : (sender === 'System' ? '#ffff55' : '#ffddaa');
+    msgEl.innerText = sender + ': ' + safeMsg;
+
+    const chatMsgs = document.getElementById('chatMessages');
+    chatMsgs.appendChild(msgEl);
+    if (chatMsgs.children.length > 50) chatMsgs.firstChild.remove();
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+
+    wakeChat();
 }
 
-// Hook up the HTML chat overlay logic
 const chatBox = document.getElementById('chatBox');
 const chatInp = document.getElementById('chatInp');
 const chatSend = document.getElementById('chatSend');
+
+function closeChatUI() {
+    chatInp.value = '';
+    chatBox.style.display = 'none'; 
+    document.getElementById('chatMessages').style.pointerEvents = 'none';
+    chatInp.blur();
+    wakeChat();
+}
 
 function sendChatUI() {
     const msg = chatInp.value;
@@ -1639,33 +1736,24 @@ function sendChatUI() {
         
         try {
             if(G.isHost) {
-                // Host sends to all guests
                 for(let id in G.conns) {
-                    if(G.conns[id] && G.conns[id].open) {
-                        G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
-                    }
+                    if(G.conns[id] && G.conns[id].open) G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
                 }
             } else {
-                // Guest sends to host
-                if(G.conns['host'] && G.conns['host'].open) {
-                    G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
-                }
+                if(G.conns['host'] && G.conns['host'].open) G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
             }
         } catch(e) { console.error("Chat send error:", e); }
     }
-    chatInp.value = '';
-    chatBox.style.display = 'none'; // Hide overlay again
+    closeChatUI();
 }
 
 chatSend.addEventListener('click', sendChatUI);
-chatInp.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') sendChatUI();
-});
-
-// Prevent canvas inputs from overriding chat overlay
+chatInp.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendChatUI(); });
 chatBox.addEventListener('touchstart', e => e.stopPropagation());
 chatBox.addEventListener('touchmove', e => e.stopPropagation());
 chatBox.addEventListener('click', e => e.stopPropagation());
+document.getElementById('chatContainer').addEventListener('touchstart', e => e.stopPropagation());
+document.getElementById('chatContainer').addEventListener('touchmove', e => e.stopPropagation());
 
 
 // ── MULTIPLAYER MODAL UI ──
@@ -1691,25 +1779,17 @@ function showMpModal(mode) {
     mpUserInp.focus();
 }
 
-mpBtnCancel.addEventListener('click', () => {
-    mpModal.style.display = 'none';
-});
+mpBtnCancel.addEventListener('click', () => mpModal.style.display = 'none');
 
 mpBtnConfirm.addEventListener('click', () => {
     const u = mpUserInp.value.trim();
     G.username = u !== '' ? u : (mpMode === 'host' ? 'Host' : 'Guest');
-    
     mpModal.style.display = 'none';
     
-    if(mpMode === 'host') {
-        hostGame();
-    } else {
-        const r = mpRoomInp.value.trim();
-        if(r) joinGame(r);
-    }
+    if(mpMode === 'host') hostGame();
+    else { const r = mpRoomInp.value.trim(); if(r) joinGame(r); }
 });
 
-// Prevent modal from stealing game clicks
 mpModal.addEventListener('touchstart', e => e.stopPropagation());
 mpModal.addEventListener('touchmove', e => e.stopPropagation());
 mpModal.addEventListener('click', e => e.stopPropagation());
@@ -1720,10 +1800,7 @@ function leaveGame() {
     if(G.sessionTimer) { clearTimeout(G.sessionTimer); G.sessionTimer = null; }
     if(syncInterval) { clearInterval(syncInterval); syncInterval = null; }
     
-    // Close all connections
-    for(let id in G.conns) {
-        if(G.conns[id]) G.conns[id].close();
-    }
+    for(let id in G.conns) { if(G.conns[id]) G.conns[id].close(); }
     G.conns = {};
     if(G.peer) { G.peer.destroy(); G.peer = null; }
     
@@ -1755,21 +1832,16 @@ function hostGame() {
     });
     
     G.peer.on('connection', c => {
-        // Safety handshake: Wait until connection is actually open
         c.on('open', () => {
             G.conns[c.peer] = c;
             addChatMessage('System', 'A player joined the party!');
             
             c.on('data', data => {
-                if (data.type === 'sync') {
-                    G.otherPlayers[c.peer] = data.player; // Update this specific guest
-                } else if (data.type === 'chat') {
+                if (data.type === 'sync') G.otherPlayers[c.peer] = data.player; 
+                else if (data.type === 'chat') {
                     addChatMessage(data.sender, data.msg); 
-                    // Forward the chat to all OTHER guests
                     for (let id in G.conns) {
-                        if (id !== c.peer && G.conns[id].open) {
-                            G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
-                        }
+                        if (id !== c.peer && G.conns[id].open) G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
                     }
                 }
             });
@@ -1796,19 +1868,14 @@ function joinGame(pid) {
         addChatMessage('System', 'Connecting to Room ' + pid + '...');
         const c = G.peer.connect('dinoworld-' + pid);
         
-        // Safety handshake: Wait until connection is actually open
         c.on('open', () => {
             G.conns['host'] = c;
             addChatMessage('System', 'Connected to Room ' + pid + '!');
             startSessionTimer();
 
             c.on('data', data => {
-                if (data.type === 'sync') {
-                    // Overwrite our list of players with the Host's master list
-                    G.otherPlayers = data.players; 
-                } else if (data.type === 'chat') {
-                    addChatMessage(data.sender, data.msg); 
-                }
+                if (data.type === 'sync') G.otherPlayers = data.players; 
+                else if (data.type === 'chat') addChatMessage(data.sender, data.msg); 
             });
 
             c.on('close', () => {
@@ -1827,32 +1894,21 @@ function startSyncLoop() {
     syncInterval = setInterval(() => {
         try {
             const myData = {
-                x: G.player.x, 
-                y: G.player.y, 
-                dk: G.player.dk, 
-                face: G.player.face, 
-                anim: G.player.anim, 
-                hat: G.player.hat,
-                name: G.username
+                x: G.player.x, y: G.player.y, dk: G.player.dk, 
+                face: G.player.face, anim: G.player.anim, 
+                hat: G.player.hat, colorId: G.player.colorId, name: G.username
             };
 
             if (G.isHost) {
-                // Host sends everyone's data to everyone
                 const allPlayers = { host: myData };
                 for (let id in G.otherPlayers) allPlayers[id] = G.otherPlayers[id];
-
                 for (let id in G.conns) {
-                    if (G.conns[id] && G.conns[id].open) {
-                        G.conns[id].send({ type: 'sync', players: allPlayers });
-                    }
+                    if (G.conns[id] && G.conns[id].open) G.conns[id].send({ type: 'sync', players: allPlayers });
                 }
             } else {
-                // Guest just sends their data to the host
-                if (G.conns['host'] && G.conns['host'].open) {
-                    G.conns['host'].send({ type: 'sync', player: myData });
-                }
+                if (G.conns['host'] && G.conns['host'].open) G.conns['host'].send({ type: 'sync', player: myData });
             }
-        } catch(e) { console.error("Sync error:", e); }
+        } catch(e) {}
     }, 100);
 }
 
