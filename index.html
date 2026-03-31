@@ -141,7 +141,8 @@ playerShield: 0,
 lastDamageTick: 0,
 discovered:{raptor:true},
 wilds:[],
-battle:{ek:null,ehp:0,emhp:0,php:0,pmhp:0,php_shield:0,pmhp_shield:0,turn:'player',log:[],anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:false},
+battle:{isPvP:false, opId:null, ek:null, ehp:0, emhp:0, eshield:0, emshield:0, ename:'', ecolor:'', ehat:'', php:0, pmhp:0, php_shield:0, pmhp_shield:0, turn:'player', log:[], anim:false, res:null, eshake:0, pshake:0, dnums:[]},
+pvp: { closeId: null, reqTo: null, reqFrom: null, reqFromName: '', reqFromStats: null, cd: 0, opponentId: null },
 keys:{},
 joy:{on:false,sx:0,sy:0,dx:0,dy:0},
 btns:[],
@@ -204,6 +205,7 @@ volcanoTimer: G.volcanoTimer,
 megaTimer: G.megaTimer,
 megaOnLand: G.megaOnLand
 };
+// Note: G.username is intentionally NOT saved here. It stays temporary.
 localStorage.setItem('dinoworld_save', JSON.stringify(data));
 } catch (e) { console.error("Save error", e); }
 }
@@ -802,6 +804,38 @@ ctx.fillStyle='rgba(255,220,0,0.85)';ctx.font='bold 13px Courier New';ctx.textAl
 ctx.fillText('⛨ Safe Zone',W/2,H-65);
 }
 
+// ── PvP SYSTEM UI ──
+if (G.pvp.cd > 0) G.pvp.cd--;
+
+if (G.pvp.reqFrom) {
+    const rw = 280, rh = 80;
+    const rx = W/2 - rw/2, ry = H - 240;
+    rr(rx, ry, rw, rh, 8, 'rgba(20,20,40,0.95)', '#8822cc', 2);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(G.pvp.reqFromName + ' requested PvP!', W/2, ry + 25);
+    
+    btn(rx + 20, ry + 45, 110, 26, 'Deny', '#cc2222', '#fff', () => {
+        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, accept: false, name: G.username || 'Player' });
+        G.pvp.reqFrom = null;
+        G.pvp.cd = 300;
+    }, '✖');
+    
+    btn(rx + 150, ry + 45, 110, 26, 'Accept', '#22cc22', '#fff', () => {
+        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, accept: true, stats: getMyBattleStats() });
+        startPvPBattle(G.pvp.reqFrom, G.pvp.reqFromStats, false); 
+        G.pvp.reqFrom = null;
+    }, '✔');
+} else if (G.pvp.closeId && !G.pvp.reqTo && G.pvp.cd === 0 && G.encCd <= 0) {
+    const op = G.otherPlayers[G.pvp.closeId];
+    if (op) {
+        btn(W/2 - 80, H - 150, 160, 36, 'Request PvP', '#cc6622', '#fff', () => {
+            G.pvp.reqTo = G.pvp.closeId;
+            sendPvP({ type: 'pvp_request', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player', stats: getMyBattleStats() });
+            addChatMessage('System', 'PvP Request Sent!');
+        }, '⚔️');
+    }
+}
+
 // ── CHAT BUTTON & RENDER ──
 btn(16, H-80, 65, 40, 'Chat', '#44aa44', '#fff', () => {
     document.getElementById('chatBox').style.display = 'flex';
@@ -844,13 +878,27 @@ ctx.fillText('⚠ BOSS BATTLE ⚠',W/2,25);ctx.shadowBlur=0;
 }
 const en=DINOS[b.ek];
 const eshake=b.eshake>0?(Math.random()-0.5)*10:0;
-const eScale=boss?2.8:1.9;
-drawDino(b.ek,W*0.67+eshake,H*0.37,-1,G.tick,eScale,1);
+const eScale = boss ? 2.8 : (b.isPvP ? 1.65 : 1.9);
+drawDino(b.ek,W*0.67+eshake,H*0.37,-1,G.tick,eScale,1, b.isPvP ? getOC(b.ecolor) : null);
+if (b.isPvP) {
+    const epHeadY = H*0.37 - DINOS[b.ek].sz * 1.65 * 0.55;
+    drawHat(b.ehat || 'bucket', W*0.67+eshake, epHeadY, 1.5);
+}
+
 const ehPct=b.ehp/b.emhp;
 const ehCol=ehPct>0.5?'#44cc44':ehPct>0.25?'#cccc44':'#cc4444';
 hpBar(W*0.46,52,W*0.44,20,b.ehp,b.emhp,ehCol,`${b.ehp}/${b.emhp}`);
+if (b.isPvP && b.eshield > 0) {
+    hpBar(W*0.46, 76, W*0.44, 10, b.eshield, b.emshield, '#44aaff', 'SHIELD');
+}
+
 ctx.fillStyle=RARITY_COLOR[en.rarity];ctx.font='bold 14px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
-ctx.fillText(`${en.em} ${en.name}`,W*0.46+4,42);
+if (b.isPvP) {
+    ctx.fillText(`⚔️ ${b.ename}'s ${en.name}`, W*0.46+4, 42);
+} else {
+    ctx.fillText(`${en.em} ${en.name}`, W*0.46+4, 42);
+}
+
 const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
 const pDk=G.player.dk;
 drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1,getOC(G.player.colorId));
@@ -923,23 +971,94 @@ btn(W/2-70,H/2+25,140,40,'Continue','#224488','#fff',exitBattle,'▶');
 }
 }
 // ── BATTLE LOGIC ──
+function getMyBattleStats() {
+    return {
+        dk: G.player.dk,
+        hp: G.playerHp,
+        mhp: pMaxHp(),
+        shield: G.playerShield,
+        mshield: Math.floor(pMaxHp()*0.4),
+        atk: pAtk(),
+        spd: pSpd(),
+        name: G.username || 'Player',
+        colorId: G.player.colorId,
+        hat: G.player.hat
+    };
+}
+
+function startPvPBattle(opId, opStats, isMyTurn) {
+    G.state = 'battle';
+    G.pvp.opponentId = opId;
+    G.battle = {
+        isPvP: true,
+        opId: opId,
+        ek: opStats.dk,
+        ehp: opStats.hp,
+        emhp: opStats.mhp,
+        eshield: opStats.shield,
+        emshield: opStats.mshield,
+        ename: opStats.name,
+        ecolor: opStats.colorId,
+        ehat: opStats.hat,
+        eatk: opStats.atk,
+        espd: opStats.spd,
+
+        php: G.playerHp,
+        pmhp: pMaxHp(),
+        php_shield: G.playerShield,
+        pmhp_shield: Math.floor(pMaxHp()*0.4),
+
+        turn: isMyTurn ? 'player' : 'enemy', 
+        log:[`⚔️ Friendly PvP with ${opStats.name}!`],
+        anim: false, res: null, eshake: 0, pshake: 0, dnums: []
+    };
+    G.btns =[];
+}
+
 function startBattle(ek,isBoss){
 const en=DINOS[ek];
 G.state='battle';
 Object.assign(G.battle,{
-ek,ehp:en.hp,emhp:en.hp,php:G.playerHp,pmhp:pMaxHp(),
-php_shield:G.playerShield,pmhp_shield:Math.floor(pMaxHp()*0.4),
+isPvP:false, opId:null, ek, ehp:en.hp, emhp:en.hp, eshield:0, emshield:0,
+php:G.playerHp, pmhp:pMaxHp(), php_shield:G.playerShield, pmhp_shield:Math.floor(pMaxHp()*0.4),
 turn:'player',log:[isBoss?`⚠️ BOSS: ${en.name} appears!`:`Wild ${en.name} appeared!`],
 anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:!!isBoss
 });
 G.btns=[];
 }
+
 function doAttack(){
 const b=G.battle;
 if(b.turn!=='player'||b.anim||b.res) return;
 b.anim=true;
 const atkLv = G.player.upg.atk;
 const dmg = 20 + atkLv * 4;
+
+if (b.isPvP) {
+    sendPvP({ type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'attack', dmg: dmg });
+    
+    if (b.eshield >= dmg) { b.eshield -= dmg; }
+    else { b.ehp -= (dmg - b.eshield); b.eshield = 0; }
+    b.ehp = Math.max(0, b.ehp);
+    
+    b.eshake=20;
+    b.dnums.push({x:canvas.width*0.67,y:canvas.height*0.37,val:dmg,col:'#ff4444',life:60});
+    b.log.unshift(`You attack for ${dmg} dmg!`);if(b.log.length>5)b.log.pop();
+    spawnParticles(canvas.width*0.67,canvas.height*0.37,'#ff4444',6);
+    
+    if(b.ehp <= 0){
+        setTimeout(()=>{
+            b.log.unshift(`🏆 You won the friendly match!`);
+            b.res = 'win';
+            b.anim = false;
+            spawnParticles(canvas.width*0.67, canvas.height*0.37, '#55ddff', 16);
+        }, 500);
+    } else {
+        setTimeout(()=>{ b.anim=false; b.turn='enemy'; }, 520);
+    }
+    return;
+}
+
 b.ehp=Math.max(0,b.ehp-dmg);b.eshake=20;
 b.dnums.push({x:canvas.width*0.67,y:canvas.height*0.37,val:dmg,col:'#ff4444',life:60});
 b.log.unshift(`You attack for ${dmg} dmg!`);if(b.log.length>5)b.log.pop();
@@ -961,6 +1080,7 @@ return;
 }
 setTimeout(()=>{b.anim=false;b.turn='enemy';enemyTurn();},520);
 }
+
 function enemyTurn(){
 const b=G.battle;if(b.res) return;
 b.anim=true;
@@ -990,17 +1110,35 @@ b.log.unshift(`💀 Defeated! Lost ${pen} Buckets.`);b.res='lose';
 } else {b.turn='player';}
 },420);
 }
+
 function doRun(){
 const b=G.battle;if(b.res||b.anim) return;
+
+if (b.isPvP) {
+    sendPvP({ type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'run' });
+    b.log.unshift('You fled the friendly match!');
+    setTimeout(exitBattle, 500);
+    return;
+}
+
 if(Math.random()<0.62){b.log.unshift('Got away safely!');setTimeout(exitBattle,500);}
 else{b.log.unshift("Can't escape!");b.turn='enemy';setTimeout(enemyTurn,350);}
 }
+
 function exitBattle(){
 G.state='world';
-G.playerHp=G.battle.res==='lose'?pMaxHp():Math.max(5,G.battle.php);
-G.lastDamageTick = G.tick; // Reset healing timer
+if (G.battle.isPvP) {
+    if (G.battle.php <= 0) G.playerHp = 1; 
+    else G.playerHp = G.battle.php;
+    G.playerShield = G.battle.php_shield;
+    G.pvp.cd = 300; 
+} else {
+    G.playerHp = G.battle.res === 'lose' ? pMaxHp() : Math.max(5, G.battle.php);
+}
+G.lastDamageTick = G.tick; 
 G.encCd=200;G.btns=[];
 }
+
 // ── INDEX ──
 function drawIndex(){
 G.btns=[];
@@ -1234,7 +1372,7 @@ PALETTES.forEach((pal, i) => {
     });
 });
 
-btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='shop';G.btns=[];});
+btn(W-86,8,78,34,'✕ Close','#4a2010','#fff',()=>{G.state='world';G.btns=[];});
 }
 
 // ── INTRO ──
@@ -1484,13 +1622,30 @@ break;
 }
 }
 }
+
+// Check PvP Distance
+let closeId = null;
+for(let id in G.otherPlayers) {
+    if(!G.isHost && G.peer && id === G.peer.id) continue;
+    let op = G.otherPlayers[id];
+    if(!op) continue;
+    if(Math.hypot(p.x - op.x, p.y - op.y) < 60) {
+        closeId = id; break;
+    }
 }
+G.pvp.closeId = closeId;
+
+if (G.pvp.reqFrom && G.pvp.closeId !== G.pvp.reqFrom) G.pvp.reqFrom = null; 
+if (G.pvp.reqTo && G.pvp.closeId !== G.pvp.reqTo) G.pvp.reqTo = null; 
+}
+
 function updateBattle(){
 const b=G.battle;
 if(b.eshake>0) b.eshake--;
 if(b.pshake>0) b.pshake--;
 b.dnums=b.dnums.filter(dn=>{dn.life--;return dn.life>0;});
 }
+
 // ── RENDER ──
 function render(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -1795,7 +1950,7 @@ mpModal.addEventListener('touchmove', e => e.stopPropagation());
 mpModal.addEventListener('click', e => e.stopPropagation());
 
 
-// ── MULTIPLAYER LOGIC (HOST & PARTY SYSTEM) ──
+// ── MULTIPLAYER LOGIC & PVP (HOST & PARTY SYSTEM) ──
 function leaveGame() {
     if(G.sessionTimer) { clearTimeout(G.sessionTimer); G.sessionTimer = null; }
     if(syncInterval) { clearInterval(syncInterval); syncInterval = null; }
@@ -1816,6 +1971,68 @@ function startSessionTimer() {
         addChatMessage('System', '1-hour limit reached. Disconnecting.');
         leaveGame();
     }, 3600000); 
+}
+
+function sendPvP(data) {
+    try {
+        if (G.isHost) {
+            if (data.target === 'host') handlePvPMessage(data); 
+            else if (G.conns[data.target] && G.conns[data.target].open) G.conns[data.target].send(data);
+        } else {
+            if (G.conns['host'] && G.conns['host'].open) G.conns['host'].send(data);
+        }
+    } catch(e) { console.error("PvP Send Error:", e); }
+}
+
+function handlePvPMessage(data) {
+    if (data.type === 'pvp_request') {
+        if (G.state === 'world' && G.pvp.cd === 0 && G.encCd <= 0) {
+            G.pvp.reqFrom = data.sender;
+            G.pvp.reqFromName = data.name;
+            G.pvp.reqFromStats = data.stats;
+        } else {
+            sendPvP({ type: 'pvp_reply', target: data.sender, accept: false, name: G.username || 'Player' });
+        }
+    } else if (data.type === 'pvp_reply') {
+        if (data.accept && G.pvp.reqTo === data.sender) {
+            startPvPBattle(data.sender, data.stats, true); 
+            G.pvp.reqTo = null;
+        } else {
+            if (G.pvp.reqTo === data.sender) addChatMessage('System', data.name + ' denied PvP.');
+            G.pvp.reqTo = null;
+            G.pvp.cd = 300; // 5s CD
+        }
+    } else if (data.type === 'pvp_action') {
+        if (G.state === 'battle' && G.battle.isPvP && G.battle.opId === data.sender) {
+            const b = G.battle;
+            if (data.action === 'attack') {
+                b.anim = true;
+                const dmg = data.dmg;
+                if (b.php_shield >= dmg) { b.php_shield -= dmg; }
+                else { b.php -= (dmg - b.php_shield); b.php_shield = 0; }
+                G.playerHp = Math.max(0, b.php);
+                G.playerShield = b.php_shield;
+
+                b.pshake = 18;
+                b.dnums.push({x:canvas.width*0.28, y:canvas.height*0.52, val:dmg, col:'#ff8844', life:60});
+                b.log.unshift(`${b.ename} attacks for ${dmg}!`); if(b.log.length>5) b.log.pop();
+                spawnParticles(canvas.width*0.28, canvas.height*0.52, '#ff8844', 6);
+
+                setTimeout(()=>{
+                    b.anim = false;
+                    if(b.php <= 0){
+                        b.log.unshift(`💀 You lost the friendly match!`);
+                        b.res = 'lose';
+                    } else {
+                        b.turn = 'player';
+                    }
+                }, 420);
+            } else if (data.action === 'run') {
+                b.log.unshift(`${b.ename} fled the match!`);
+                b.res = 'win';
+            }
+        }
+    }
 }
 
 function hostGame() {
@@ -1843,10 +2060,17 @@ function hostGame() {
                     for (let id in G.conns) {
                         if (id !== c.peer && G.conns[id].open) G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
                     }
+                } else if (data.type.startsWith('pvp_')) {
+                    if (data.target === 'host') handlePvPMessage(data);
+                    else if (G.conns[data.target] && G.conns[data.target].open) G.conns[data.target].send(data);
                 }
             });
 
             c.on('close', () => {
+                if (G.state === 'battle' && G.battle.isPvP && G.battle.opId === c.peer) {
+                    G.battle.log.unshift("Opponent disconnected!");
+                    G.battle.res = 'win';
+                }
                 delete G.otherPlayers[c.peer];
                 delete G.conns[c.peer];
                 addChatMessage('System', 'A player left the party.');
@@ -1876,10 +2100,12 @@ function joinGame(pid) {
             c.on('data', data => {
                 if (data.type === 'sync') G.otherPlayers = data.players; 
                 else if (data.type === 'chat') addChatMessage(data.sender, data.msg); 
+                else if (data.type.startsWith('pvp_')) handlePvPMessage(data);
             });
 
             c.on('close', () => {
                 addChatMessage('System', 'Host closed the room.');
+                if (G.state === 'battle' && G.battle.isPvP) G.state = 'world';
                 leaveGame(); 
             });
         });
