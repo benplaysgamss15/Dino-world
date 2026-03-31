@@ -69,18 +69,7 @@ const TS = 48;
 const WS = 160;
 const LERP = 0.1;
 const RARITY_COLOR = {Common:'#aaaaaa',Rare:'#4488ff',Epic:'#cc44ff',Legendary:'#ffaa00',Boss:'#ff3333'};
-
-// ── CUSTOM COLORS PALETTE ──
-const PALETTES =[
-    { id:'blue', name:'Blue', oc:{body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'} },
-    { id:'red', name:'Red', oc:{body:'#ff4040',legs:'#7a1a1a',head:'#ffd700',neck:'#ffd700',tail:'#cc2a2a'} },
-    { id:'green', name:'Green', oc:{body:'#40ff40',legs:'#1a7a1a',head:'#ffd700',neck:'#ffd700',tail:'#2acc2a'} },
-    { id:'purple', name:'Purple', oc:{body:'#c440ff',legs:'#4a1a7a',head:'#ffd700',neck:'#ffd700',tail:'#9a2acc'} },
-    { id:'dark', name:'Dark', oc:{body:'#444444',legs:'#111111',head:'#aa0000',neck:'#aa0000',tail:'#222222'} }
-];
-function getOC(cId) {
-    return PALETTES.find(p=>p.id===cId)?.oc || PALETTES[0].oc;
-}
+const R_MULT = {Common: 1, Rare: 1.25, Epic: 1.5, Legendary: 1.85, Boss: 2.5}; // Scaling Multiplier
 
 const DINOS = {
 // ── LEVEL 1 DINOS ──
@@ -135,14 +124,15 @@ state:'intro',
 level: 1,
 wheat:60, tick:0,
 cam:{x:0,y:0},
-player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', colorId:'blue'},
+player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', oc: {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'}},
+custPart: 'body',
 playerHp:80,
 playerShield: 0,
 lastDamageTick: 0,
 discovered:{raptor:true},
 wilds:[],
-battle:{isPvP:false, opId:null, ek:null, ehp:0, emhp:0, eshield:0, emshield:0, ename:'', ecolor:'', ehat:'', php:0, pmhp:0, php_shield:0, pmhp_shield:0, turn:'player', log:[], anim:false, res:null, eshake:0, pshake:0, dnums:[]},
-pvp: { closeId: null, reqTo: null, reqFrom: null, reqFromName: '', reqFromStats: null, cd: 0, opponentId: null },
+battle:{isPvP:false, opId:null, ek:null, ehp:0, emhp:0, eshield:0, emshield:0, ename:'', eoc:null, ehat:'', php:0, pmhp:0, php_shield:0, pmhp_shield:0, turn:'player', log:[], anim:false, res:null, eshake:0, pshake:0, dnums:[]},
+pvp: { closeId: null, reqTo: null, reqFrom: null, reqFromName: '', reqFromStats: null, cd: 0, msgTimer: 0, opponentId: null },
 keys:{},
 joy:{on:false,sx:0,sy:0,dx:0,dy:0},
 btns:[],
@@ -205,7 +195,6 @@ volcanoTimer: G.volcanoTimer,
 megaTimer: G.megaTimer,
 megaOnLand: G.megaOnLand
 };
-// Note: G.username is intentionally NOT saved here. It stays temporary.
 localStorage.setItem('dinoworld_save', JSON.stringify(data));
 } catch (e) { console.error("Save error", e); }
 }
@@ -269,8 +258,8 @@ else if(t===4) tileClr[y][x]=VRED[Math.abs(x*7+y*3)%VRED.length];
 generateWorld();
 
 function pDino(){ return DINOS[G.player.dk]; }
-function pMaxHp(){ return pDino().hp + G.player.upg.hp*32; }
-function pAtk(){ return pDino().atk + G.player.upg.atk*4; }
+function pMaxHp(){ return Math.floor((pDino().hp + G.player.upg.hp*32) * R_MULT[pDino().rarity]); }
+function pAtk(){ return Math.floor((pDino().atk + G.player.upg.atk*4) * R_MULT[pDino().rarity]); }
 function pSpd(){ return pDino().spd + G.player.upg.spd*0.5; }
 
 // ── HELPERS ──
@@ -315,6 +304,18 @@ ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.fillText(label,x+w/2,y+h/2);
 }
 }
+function getCol(c, size) {
+    if(!c) return '#ffffff';
+    if(c.startsWith('grad:')) {
+        const pts = c.split(':');
+        const g = ctx.createLinearGradient(-size, -size, size, size);
+        g.addColorStop(0, pts[1]);
+        g.addColorStop(1, pts[2]);
+        return g;
+    }
+    return c;
+}
+
 // ── DINO DRAW ──
 function drawDino(key,cx,cy,face,af,sc,alpha,oc){
 const d=DINOS[key];if(!d)return;
@@ -323,26 +324,28 @@ ctx.globalAlpha=alpha!=null?alpha:1;
 ctx.translate(cx,cy);ctx.scale(face,1);
 const s=(sc||1)*(d.sz/20);
 const bob=Math.sin(af*0.18)*2.5;
-const cBody=oc&&oc.body?oc.body:d.col;
-const cLegs=oc&&oc.legs?oc.legs:d.acc;
-const cHead=oc&&oc.head?oc.head:d.col;
-const cNeck=oc&&oc.neck?oc.neck:d.col;
-const cTail=oc&&oc.tail?oc.tail:d.col;
+
+const cBody = oc && oc.body ? getCol(oc.body, 20*s) : d.col;
+const cLegs = oc && oc.legs ? getCol(oc.legs, 20*s) : d.acc;
+const cHead = oc && oc.head ? getCol(oc.head, 15*s) : d.col;
+const cNeck = oc && oc.neck ? getCol(oc.neck, 15*s) : d.col;
+const cTail = oc && oc.tail ? getCol(oc.tail, 20*s) : d.col;
+
 ctx.fillStyle='rgba(0,0,0,0.18)';ctx.beginPath();
 ctx.ellipse(0,d.sz*s*0.55+2,d.sz*s*0.65,5,0,0,Math.PI*2);ctx.fill();
 
 if(key==='megalodon' || key==='mosasaurus'){
 const isMosa = key==='mosasaurus';
-ctx.fillStyle=d.col;ctx.beginPath();ctx.ellipse(0,bob,(isMosa?40:46)*s,(isMosa?15:22)*s,0.2,0,Math.PI*2);ctx.fill();
-ctx.fillStyle=d.acc;ctx.beginPath();
+ctx.fillStyle=cBody;ctx.beginPath();ctx.ellipse(0,bob,(isMosa?40:46)*s,(isMosa?15:22)*s,0.2,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cLegs;ctx.beginPath();
 ctx.moveTo(5*s,-15*s+bob);ctx.lineTo(-10*s,5*s+bob);ctx.lineTo(20*s,5*s+bob);ctx.fill();
-ctx.fillStyle=d.col;ctx.beginPath();
+ctx.fillStyle=cBody;ctx.beginPath();
 ctx.moveTo(-10*s,5*s+bob);ctx.lineTo(-35*s,(isMosa?10:20)*s+bob);ctx.lineTo(-5*s,18*s+bob);ctx.fill();
 if(!isMosa){
 ctx.beginPath();ctx.moveTo(-10*s,5*s+bob);ctx.lineTo(-35*s,-5*s+bob);ctx.lineTo(-5*s,3*s+bob);ctx.fill();
 }else{
 ctx.beginPath();ctx.moveTo(-35*s,10*s+bob);ctx.lineTo(-50*s,15*s+bob);ctx.lineTo(-45*s,0*s+bob);ctx.fill();
-ctx.fillStyle=d.acc;
+ctx.fillStyle=cLegs;
 ctx.beginPath();ctx.ellipse(15*s,15*s+bob,8*s,4*s,0.5,0,Math.PI*2);ctx.fill();
 ctx.beginPath();ctx.ellipse(-10*s,12*s+bob,7*s,3*s,0.5,0,Math.PI*2);ctx.fill();
 }
@@ -358,12 +361,12 @@ ctx.ellipse(0,bob,49*s,25*s,0.2,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
 } else if(key==='pterodactyl' || key==='quetzalcoatlus'){
 const isQuetz = key==='quetzalcoatlus';
 const flap=Math.sin(af*0.28)*14;
-ctx.fillStyle=d.col;ctx.beginPath();
+ctx.fillStyle=cBody;ctx.beginPath();
 ctx.moveTo(-32*s,flap*s+bob);ctx.quadraticCurveTo(-42*s,12*s+bob,-16*s,16*s+bob);
 ctx.quadraticCurveTo(0,6*s+bob,16*s,16*s+bob);
 ctx.quadraticCurveTo(42*s,12*s+bob,32*s,flap*s+bob);
 ctx.quadraticCurveTo(0,-20*s+bob,-32*s,flap*s+bob);ctx.fill();
-ctx.fillStyle=d.acc;ctx.beginPath();ctx.ellipse(20*s,-6*s+bob,11*s,7*s,-0.3,0,Math.PI*2);ctx.fill();
+ctx.fillStyle=cLegs;ctx.beginPath();ctx.ellipse(20*s,-6*s+bob,11*s,7*s,-0.3,0,Math.PI*2);ctx.fill();
 ctx.fillStyle='#d4a030';ctx.beginPath();
 ctx.moveTo(29*s,-6*s+bob);ctx.lineTo((isQuetz?50:42)*s,-3*s+bob);ctx.lineTo(29*s,0+bob);ctx.fill();
 ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(23*s,-8*s+bob,2.5*s,0,Math.PI*2);ctx.fill();
@@ -429,7 +432,7 @@ ctx.fillStyle='rgba(180,0,255,0.3)';ctx.beginPath();ctx.ellipse(0,0+bob,20*s,12*
 ctx.fillStyle='#ffff00';
 for(let i=0;i<3;i++){ctx.fillRect((-6+i*6)*s,-6*s+bob,2.5*s,12*s);}
 }else{
-ctx.fillStyle=d.acc;
+ctx.fillStyle=cLegs;
 for(let i=-2;i<=3;i++){
 ctx.beginPath();ctx.moveTo(i*8*s,-10*s+bob);
 ctx.lineTo(i*8*s-4*s,-22*s+bob);
@@ -438,14 +441,14 @@ ctx.lineTo(i*8*s+4*s,-22*s+bob);ctx.fill();
 }
 }
 if(key==='dimetrodon'){
-ctx.fillStyle=d.acc;ctx.beginPath();
+ctx.fillStyle=cLegs;ctx.beginPath();
 ctx.moveTo(-15*s,-5*s+bob);ctx.quadraticCurveTo(0,-30*s+bob,15*s,-5*s+bob);ctx.fill();
 }
 if(key==='pachycephalosaurus'){
 ctx.fillStyle='#e8c898';ctx.beginPath();ctx.ellipse(26*s,-13*s+bob,6*s,5*s,0,0,Math.PI*2);ctx.fill();
 }
 if(key==='giganotosaurus'){
-ctx.fillStyle=d.acc;
+ctx.fillStyle=cLegs;
 for(let i=-2;i<=1;i++){ctx.fillRect((i*8)*s,-18*s+bob,4*s,8*s);}
 }
 if(d.rarity==='Legendary'){
@@ -673,7 +676,7 @@ const p=G.player;
 const sx=p.x-G.cam.x, sy=p.y-G.cam.y;
 const asz=10, ay=sy-DINOS[p.dk].sz-32+Math.sin(G.tick*0.08)*4;
 ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(sx,ay);ctx.lineTo(sx-asz,ay-asz);ctx.lineTo(sx+asz,ay-asz);ctx.fill();
-drawDino(p.dk,sx,sy,p.face,p.anim,1.25,1,getOC(p.colorId));
+drawDino(p.dk,sx,sy,p.face,p.anim,1.25,1, p.oc);
 const headOff=DINOS[p.dk].sz*1.25*0.55;
 const bob=Math.sin(p.anim*0.18)*2.5;
 drawHat(G.player.hat || 'bucket',sx,sy-headOff+bob-2,1.1);
@@ -748,21 +751,29 @@ if (!isConnected) {
     ctx.fillText(G.peerId ? 'Room: '+G.peerId : 'Connected', W-15, 88);
 }
 
-// Bottom buttons
-const bw=108,bh=44,gap=10,by=H-58;
-const total=3*(bw+gap)-gap;
+// Bottom buttons (Index, Shop, Shield, Heal)
+const bw=95,bh=44,gap=10,by=H-58;
+const total=4*(bw+gap)-gap;
 const bsx=(W-total)/2;
 btn(bsx, by,bw,bh,'Index', '#2255cc','#fff',()=>{G.state='index';G.idxPage=0;G.btns=[];},'📘');
 btn(bsx+bw+gap,by,bw,bh,'Shop', '#cc5522','#fff',()=>{G.state='shop';G.btns=[];},'🛒');
 
-// Shield button
-btn(bsx+2*(bw+gap),by,bw,bh,'Shield (15🪣)','#225588','#fff',()=>{
+btn(bsx+2*(bw+gap),by,bw,bh,'Shld(40)','#225588','#fff',()=>{
 const maxS = Math.floor(pMaxHp()*0.4);
-if(G.wheat>=15 && G.playerShield < maxS){
-    G.wheat-=15; G.playerShield = maxS;
+const addS = Math.floor(pMaxHp()*0.15);
+if(G.wheat>=40 && G.playerShield < maxS){
+    G.wheat-=40; G.playerShield = Math.min(maxS, G.playerShield + addS);
     spawnParticles(W/2,H-80,'#44aaff',12);
 }
 },'🛡️');
+
+btn(bsx+3*(bw+gap),by,bw,bh,'Heal(5)','#225522','#fff',()=>{
+const addH = Math.floor(pMaxHp()*0.1);
+if(G.wheat>=5 && G.playerHp < pMaxHp()){
+    G.wheat-=5; G.playerHp = Math.min(pMaxHp(), G.playerHp + addH);
+    spawnParticles(W/2,H-80,'#44ff44',8);
+}
+},'💊');
 
 // Minimap
 const mm=90, mmx=W-mm-8, mmy=H-mm-65;
@@ -817,7 +828,7 @@ if (G.pvp.reqFrom) {
     btn(rx + 20, ry + 45, 110, 26, 'Deny', '#cc2222', '#fff', () => {
         sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
         G.pvp.reqFrom = null;
-        G.pvp.cd = 300;
+        G.pvp.cd = 1800; // 30s CD
     }, '✖');
     
     btn(rx + 150, ry + 45, 110, 26, 'Accept', '#22cc22', '#fff', () => {
@@ -825,25 +836,38 @@ if (G.pvp.reqFrom) {
         startPvPBattle(G.pvp.reqFrom, G.pvp.reqFromStats, false); 
         G.pvp.reqFrom = null;
     }, '✔');
-} else if (G.pvp.closeId && !G.pvp.reqTo && G.pvp.cd === 0 && G.encCd <= 0) {
+} else if (G.pvp.closeId && !G.pvp.reqTo && G.encCd <= 0) {
     const op = G.otherPlayers[G.pvp.closeId];
     if (op) {
-        btn(W/2 - 80, H - 150, 160, 36, 'Request PvP', '#cc6622', '#fff', () => {
-            G.pvp.reqTo = G.pvp.closeId;
-            sendPvP({ type: 'pvp_request', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player', stats: getMyBattleStats() });
-            addChatMessage('System', 'PvP Request Sent!');
+        btn(W/2 - 80, H - 150, 160, 36, 'Request PvP', G.pvp.cd > 0 ? '#888888' : '#cc6622', '#fff', () => {
+            if(G.pvp.cd > 0) {
+                G.pvp.msgTimer = 180; // 3 seconds
+            } else {
+                G.pvp.reqTo = G.pvp.closeId;
+                sendPvP({ type: 'pvp_request', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player', stats: getMyBattleStats() });
+                addChatMessage('System', 'PvP Request Sent!');
+            }
         }, '⚔️');
     }
 }
 
+if (G.pvp.msgTimer > 0) {
+    G.pvp.msgTimer--;
+    ctx.fillStyle = '#ff4444'; ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+    ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText("PvP request is on cooldown!", W/2, H/2 - 60 - (180 - G.pvp.msgTimer) * 0.2);
+    ctx.shadowBlur = 0;
+}
+
 // ── CHAT BUTTON & RENDER ──
-btn(16, H-80, 65, 40, 'Chat', '#44aa44', '#fff', () => {
+btn(16, 280, 65, 40, 'Chat', '#44aa44', '#fff', () => {
     document.getElementById('chatBox').style.display = 'flex';
     document.getElementById('chatInp').focus();
     document.getElementById('chatMessages').style.pointerEvents = 'auto';
     wakeChat();
 }, '💬');
 }
+
 // ── BATTLE ──
 function drawBattle(){
 G.btns=[];
@@ -879,7 +903,7 @@ ctx.fillText('⚠ BOSS BATTLE ⚠',W/2,25);ctx.shadowBlur=0;
 const en=DINOS[b.ek];
 const eshake=b.eshake>0?(Math.random()-0.5)*10:0;
 const eScale = boss ? 2.8 : (b.isPvP ? 1.65 : 1.9);
-drawDino(b.ek,W*0.67+eshake,H*0.37,-1,G.tick,eScale,1, b.isPvP ? getOC(b.ecolor) : null);
+drawDino(b.ek,W*0.67+eshake,H*0.37,-1,G.tick,eScale,1, b.isPvP ? b.eoc : null);
 if (b.isPvP) {
     const epHeadY = H*0.37 - DINOS[b.ek].sz * 1.65 * 0.55;
     drawHat(b.ehat || 'bucket', W*0.67+eshake, epHeadY, 1.5);
@@ -901,7 +925,7 @@ if (b.isPvP) {
 
 const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
 const pDk=G.player.dk;
-drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1,getOC(G.player.colorId));
+drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1, G.player.oc);
 const bpHeadY=H*0.52-DINOS[pDk].sz*1.65*0.55;
 drawHat(G.player.hat || 'bucket',W*0.28+pshake,bpHeadY,1.5);
 const phPct=b.php/b.pmhp;
@@ -981,7 +1005,7 @@ function getMyBattleStats() {
         atk: pAtk(),
         spd: pSpd(),
         name: G.username || 'Player',
-        colorId: G.player.colorId,
+        oc: G.player.oc,
         hat: G.player.hat
     };
 }
@@ -998,7 +1022,7 @@ function startPvPBattle(opId, opStats, isMyTurn) {
         eshield: opStats.shield,
         emshield: opStats.mshield,
         ename: opStats.name,
-        ecolor: opStats.colorId,
+        eoc: opStats.oc,
         ehat: opStats.hat,
         eatk: opStats.atk,
         espd: opStats.spd,
@@ -1010,7 +1034,7 @@ function startPvPBattle(opId, opStats, isMyTurn) {
 
         turn: isMyTurn ? 'player' : 'enemy', 
         log:[`⚔️ Friendly PvP with ${opStats.name}!`],
-        anim: false, res: null, eshake: 0, pshake: 0, dnums: []
+        anim: false, res: null, eshake: 0, pshake: 0, dnums:[]
     };
     G.btns =[];
 }
@@ -1019,7 +1043,7 @@ function startBattle(ek,isBoss){
 const en=DINOS[ek];
 G.state='battle';
 Object.assign(G.battle,{
-isPvP:false, opId:null, ek, ehp:en.hp, emhp:en.hp, eshield:0, emshield:0,
+isPvP:false, opId:null, ek, ehp: Math.floor(en.hp * R_MULT[en.rarity]), emhp: Math.floor(en.hp * R_MULT[en.rarity]), eshield:0, emshield:0,
 php:G.playerHp, pmhp:pMaxHp(), php_shield:G.playerShield, pmhp_shield:Math.floor(pMaxHp()*0.4),
 turn:'player',log:[isBoss?`⚠️ BOSS: ${en.name} appears!`:`Wild ${en.name} appeared!`],
 anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:!!isBoss
@@ -1031,8 +1055,7 @@ function doAttack(){
 const b=G.battle;
 if(b.turn!=='player'||b.anim||b.res) return;
 b.anim=true;
-const atkLv = G.player.upg.atk;
-const dmg = 20 + atkLv * 4;
+const dmg = pAtk();
 
 if (b.isPvP) {
     sendPvP({ type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'attack', dmg: dmg });
@@ -1085,9 +1108,9 @@ function enemyTurn(){
 const b=G.battle;if(b.res) return;
 b.anim=true;
 const en=DINOS[b.ek];
-let dmg=Math.max(1,en.atk+Math.floor(Math.random()*10)-5);
-if(b.ek === 'megalodon') dmg = 50 + Math.floor(Math.random() * 11);
-else if(b.ek === 'indominus') dmg = 70 + Math.floor(Math.random() * 31);
+let dmg = Math.max(1, Math.floor(en.atk * R_MULT[en.rarity]) + Math.floor(Math.random()*10)-5);
+if(b.ek === 'megalodon') dmg = 125 + Math.floor(Math.random() * 20); // Scaled for Boss
+else if(b.ek === 'indominus') dmg = 175 + Math.floor(Math.random() * 50);
 
 if (b.php_shield >= dmg) {
     b.php_shield -= dmg;
@@ -1131,7 +1154,7 @@ if (G.battle.isPvP) {
     if (G.battle.php <= 0) G.playerHp = 1; 
     else G.playerHp = G.battle.php;
     G.playerShield = G.battle.php_shield;
-    G.pvp.cd = 300; 
+    G.pvp.cd = 1800; // 30s Cooldown
 } else {
     G.playerHp = G.battle.res === 'lose' ? pMaxHp() : Math.max(5, G.battle.php);
 }
@@ -1172,7 +1195,7 @@ isCur?'rgba(20,60,20,0.95)':found?'rgba(12,25,55,0.9)':'rgba(8,12,25,0.7)',
 isCur?'#44ff44':found?RARITY_COLOR[dn.rarity]:'#282838',2);
 if(found){
 ctx.save();ctx.beginPath();ctx.rect(cx-cw/2+6,cy-55,cw-12,80);ctx.clip();
-const idxOc=isCur?getOC(G.player.colorId):null;
+const idxOc=isCur?G.player.oc:null;
 drawDino(key,cx,cy-18,1,G.tick*0.5,0.65,1,idxOc);ctx.restore();
 } else {
 ctx.fillStyle='rgba(60,60,100,0.8)';ctx.font='40px Courier New';
@@ -1185,7 +1208,7 @@ ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(cx-28,cy+45,56,13);
 ctx.fillStyle=RARITY_COLOR[dn.rarity];ctx.font='8px Courier New';ctx.fillText(dn.rarity,cx,cy+58);
 if(!isCur) btn(cx-32,cy+61,64,22,'Equip','#1a3a88','#fff',()=>{
 if(G.swapCd>0) {
-    addChatMessage('System', `Cooldown! Wait ${Math.ceil(G.swapCd/60)}s to switch.`);
+    addChatMessage('System', `Cooldown! Wait 2s to switch.`);
     return;
 }
 const oldHpPct = G.playerHp / pMaxHp();
@@ -1238,9 +1261,10 @@ const cw2=Math.min(240,Math.floor((W-60)/3));
 const ch=240;
 const tw=upgs.length*cw2+(upgs.length-1)*18;
 const sx2=(W-tw)/2;
+const maxLv = 50;
+
 upgs.forEach((upg,i)=>{
 const lv=G.player.upg[upg.k];
-const maxLv=(upg.k==='hp'||upg.k==='atk')?10:999;
 const maxed=lv>=maxLv;
 const cost=upg.base+lv*15;
 const can=!maxed&&G.wheat>=cost;
@@ -1262,24 +1286,43 @@ maxed?'#ffaa00':can?'#fff':'#665',
 ()=>{
 if(!maxed&&G.wheat>=cost){
 G.wheat-=cost;G.player.upg[upg.k]++;
-if(upg.k==='hp') G.playerHp+=32;
+if(upg.k==='hp') G.playerHp += Math.floor(32 * R_MULT[pDino().rarity]);
 spawnParticles(x+cw2/2,y+175,'#55ccff',10);
 }
 });
-for(let l=0;l<Math.min(lv,10);l++){
-ctx.fillStyle=upg.col;ctx.beginPath();ctx.arc(x+9+l*11,y+ch-12,4,0,Math.PI*2);ctx.fill();
-}
+
+// Smooth Progress Bar
+ctx.fillStyle='#111'; ctx.fillRect(x+16, y+ch-20, cw2-32, 10);
+ctx.fillStyle=upg.col; ctx.fillRect(x+16, y+ch-20, Math.max(0, (cw2-32)*(lv/maxLv)), 10);
 });
-const hy=65+ch+20, hcost=30;
-const hcan=G.wheat>=hcost&&G.playerShield < Math.floor(pMaxHp()*0.4);
-const hw=Math.min(320,W-60), hx=(W-hw)/2;
-rr(hx,hy,hw,80,10,'rgba(0,30,0,0.95)',hcan?'#44aa44':'#1a2a1a',2);
-ctx.font='24px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('🛡️',hx+hw/2,hy+10);
-ctx.fillStyle='#aaffaa';ctx.font='bold 14px Courier New';ctx.textBaseline='top';ctx.fillText('Max Shield',hx+hw/2,hy+42);
-ctx.fillStyle='#aaddff';ctx.font='13px Courier New';ctx.fillText(`Cost: 🪣 ${hcost}`,hx+hw/2,hy+60);
-btn(hx+hw/2-55,hy+6,110,66,'',hcan?'rgba(0,60,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
-if(G.wheat>=hcost&&G.playerShield<Math.floor(pMaxHp()*0.4)){G.wheat-=hcost;G.playerShield=Math.floor(pMaxHp()*0.4);spawnParticles(W/2,H/2,'#44aaff',14);}
+
+const hy=65+ch+20;
+const hw=Math.min(420,W-60), hx=(W-hw)/2;
+const hhw = (hw - 10)/2;
+
+// Shield Buy
+const scost = 40;
+const scan = G.wheat>=scost && G.playerShield < Math.floor(pMaxHp()*0.4);
+rr(hx,hy,hhw,80,10,'rgba(0,30,50,0.95)',scan?'#44aaff':'#1a2a3a',2);
+ctx.font='24px sans-serif';ctx.fillText('🛡️',hx+hhw/2,hy+10);
+ctx.fillStyle='#aaddff';ctx.font='bold 14px Courier New';ctx.fillText('+15% Shield',hx+hhw/2,hy+42);
+ctx.fillText(`Cost: 🪣 ${scost}`,hx+hhw/2,hy+60);
+btn(hx,hy,hhw,80,'',scan?'rgba(0,0,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
+    const maxS = Math.floor(pMaxHp()*0.4); const addS = Math.floor(pMaxHp()*0.15);
+    if(G.wheat>=scost && G.playerShield < maxS){G.wheat-=scost;G.playerShield=Math.min(maxS, G.playerShield+addS);spawnParticles(W/2,H/2,'#44aaff',14);}
 });
+
+// Heal Buy
+const hcost = 5;
+const hcan = G.wheat>=hcost && G.playerHp < pMaxHp();
+rr(hx+hhw+10,hy,hhw,80,10,'rgba(0,30,0,0.95)',hcan?'#44aa44':'#1a2a1a',2);
+ctx.font='24px sans-serif';ctx.fillText('💊',hx+hhw+10+hhw/2,hy+10);
+ctx.fillStyle='#aaffaa';ctx.font='bold 14px Courier New';ctx.fillText('+10% Heal',hx+hhw+10+hhw/2,hy+42);
+ctx.fillText(`Cost: 🪣 ${hcost}`,hx+hhw+10+hhw/2,hy+60);
+btn(hx+hhw+10,hy,hhw,80,'',hcan?'rgba(0,0,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
+    if(G.wheat>=hcost && G.playerHp < pMaxHp()){G.wheat-=hcost;G.playerHp=Math.min(pMaxHp(), G.playerHp + Math.floor(pMaxHp()*0.1));spawnParticles(W/2,H/2,'#44ff44',14);}
+});
+
 
 const custY = hy + 90;
 const custW = Math.min(320, W-60);
@@ -1314,61 +1357,77 @@ const hats =[
 ];
 
 const px = W/2;
-const py = 190;
+const py = 180;
 const pDk = G.player.dk;
-drawDino(pDk, px, py, 1, G.tick, 2.5, 1, getOC(G.player.colorId));
+drawDino(pDk, px, py, 1, G.tick, 2.5, 1, G.player.oc);
 const headOff = DINOS[pDk].sz * 2.5 * 0.55;
 const bob = Math.sin(G.tick * 0.18) * 2.5;
 drawHat(G.player.hat || 'bucket', px, py - headOff + bob - 2, 2.2);
 
 const cw = Math.min(160, (W-40)/2);
-const ch = 120;
+const ch = 100;
 const sx = W/2 - cw - 10;
-const sy = 300;
+const sy = 280;
 
 hats.forEach((h, i) => {
 const col = i % 2;
 const row = Math.floor(i / 2);
 const x = sx + col * (cw + 20);
-const y = sy + row * (ch + 20);
+const y = sy + row * (ch + 15);
 
 const isEq = (G.player.hat || 'bucket') === h.id;
 rr(x, y, cw, ch, 10, isEq ? 'rgba(80,20,120,0.9)' : 'rgba(20,10,30,0.9)', isEq ? '#dd88ff' : '#442266', 2);
 
-drawHat(h.id, x + cw/2, y + 45, 1.8);
+drawHat(h.id, x + cw/2, y + 40, 1.6);
 
 ctx.fillStyle = isEq ? '#dd88ff' : '#ccc';
-ctx.font = 'bold 13px Courier New';
+ctx.font = 'bold 12px Courier New';
 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-ctx.fillText(h.name, x + cw/2, y + 85);
+ctx.fillText(h.name, x + cw/2, y + 70);
 
 if(!isEq) {
-btn(x + 20, y + 95, cw - 40, 20, 'Equip', '#5522aa', '#fff', () => {
+btn(x + 20, y + 80, cw - 40, 15, 'Equip', '#5522aa', '#fff', () => {
 G.player.hat = h.id;
 });
 } else {
 ctx.fillStyle = '#44ff44';
-ctx.font = 'bold 12px Courier New';
-ctx.fillText('✓ EQUIPPED', x + cw/2, y + 105);
+ctx.font = 'bold 11px Courier New';
+ctx.fillText('✓ EQUIPPED', x + cw/2, y + 88);
 }
 });
 
-// Color Selection
-const colsY = sy + 2*(ch + 20) + 10;
-ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Courier New';
-ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-ctx.fillText('Skin Color:', W/2, colsY - 20);
+// Color Selection Limbs
+const parts = ['body', 'head', 'legs', 'neck', 'tail'];
+if(!G.custPart) G.custPart = 'body';
 
-PALETTES.forEach((pal, i) => {
-    const cx = W/2 - ((PALETTES.length-1)*25) + i*50;
-    const isEq = (G.player.colorId || 'blue') === pal.id;
-    ctx.fillStyle = pal.oc.body;
-    ctx.beginPath(); ctx.arc(cx, colsY + 15, 18, 0, Math.PI*2); ctx.fill();
-    if(isEq) {
+const CUST_COLS =[
+    '#40c4ff', '#ff4040', '#40ff40', '#c440ff', '#aaaaaa', '#ffaa00', 
+    '#ffffff', '#111111', 'grad:#00ffee:#009999', 'grad:#ff0055:#880022', 
+    'grad:#5cd65c:#2eb82e', 'grad:#dd88ff:#5522aa'
+];
+
+ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New';
+ctx.fillText('Select Limb:', W/2, sy + 2*(ch+15));
+parts.forEach((pt, i) => {
+    const pxx = W/2 - 165 + i*66;
+    const isSel = G.custPart === pt;
+    btn(pxx, sy + 2*(ch+15) + 15, 60, 26, pt, isSel ? '#8822cc' : '#333', '#fff', () => G.custPart = pt);
+});
+
+const colsY = sy + 2*(ch + 15) + 70;
+ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New';
+ctx.fillText('Select Color:', W/2, colsY - 15);
+
+CUST_COLS.forEach((col, i) => {
+    const rx = W/2 - 165 + (i%6)*55;
+    const ry = colsY + Math.floor(i/6)*50;
+    ctx.fillStyle = getCol(col, 18);
+    ctx.beginPath(); ctx.arc(rx+25, ry+20, 18, 0, Math.PI*2); ctx.fill();
+    if (G.player.oc[G.custPart] === col) {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
     }
-    btn(cx-20, colsY-5, 40, 40, '', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', () => {
-        G.player.colorId = pal.id;
+    btn(rx+5, ry, 40, 40, '', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', () => {
+        G.player.oc[G.custPart] = col;
     });
 });
 
@@ -1403,7 +1462,7 @@ rr(fx-54,fy-14,108,28,6,'rgba(255,255,255,0.06)','rgba(255,255,255,0.14)',1);
 ctx.fillStyle='rgba(255,255,255,0.75)';ctx.font='11px Courier New';ctx.textAlign='center';ctx.textBaseline='middle';
 ctx.fillText(f,fx,fy);
 });
-drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1,getOC(G.player?.colorId || 'blue'));
+drawDino('raptor',W*0.22,H*0.7,1,G.tick,2.2,1, G.player?.oc);
 drawHat(G.player?.hat || 'bucket',W*0.22,H*0.7-DINOS.raptor.sz*2.2*0.55,2.0);
 drawDino('trex',W*0.78,H*0.7,-1,G.tick,2.2,1);
 if(W>700) drawDino('pterodactyl',W*0.5,H*0.65,1,G.tick,1.8,0.8);
@@ -1482,7 +1541,7 @@ if (G.playerHp <= 0 && G.state === 'world') {
 // Passive Healing (After 2s of no damage, heal 2% every 2.5s)
 if(G.state === 'world' && (G.tick - G.lastDamageTick >= 120) && G.playerHp > 0 && G.playerHp < pMaxHp()){
     if (G.tick % 150 === 0) {
-        G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.max(1, Math.round(pMaxHp() * 0.02)));
+        G.playerHp = Math.min(pMaxHp(), G.playerHp + Math.max(1, Math.floor(pMaxHp() * 0.02)));
     }
 }
 
@@ -1666,7 +1725,7 @@ for (let id in G.otherPlayers) {
     const sx = op.x - G.cam.x;
     const sy = op.y - G.cam.y;
     if (sx > -100 && sx < canvas.width + 100 && sy > -100 && sy < canvas.height + 100) {
-        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75, getOC(op.colorId)); // 0.75 opacity
+        drawDino(op.dk, sx, sy, op.face, op.anim, 1.25, 0.75, op.oc); // 0.75 opacity
         const headOff = DINOS[op.dk].sz * 1.25 * 0.55;
         const bob = Math.sin(op.anim * 0.18) * 2.5;
         drawHat(op.hat || 'bucket', sx, sy - headOff + bob - 2, 1.1);
@@ -1741,6 +1800,14 @@ if(G.state==='intro') {
 if(!window.activeSave) startGame(false);
 }
 if(e.key==='`' || e.key==='~') doCheatPrompt();
+
+if (e.key === '/' && document.getElementById('chatBox').style.display !== 'flex' && G.state === 'world') {
+    e.preventDefault();
+    document.getElementById('chatBox').style.display = 'flex';
+    document.getElementById('chatInp').focus();
+    document.getElementById('chatMessages').style.pointerEvents = 'auto';
+    wakeChat();
+}
 });
 window.addEventListener('keyup',e=>{
 G.keys[e.key]=false;G.keys[e.key.toLowerCase()]=false;
@@ -1793,6 +1860,7 @@ const s = window.activeSave;
 G.level = s.level || 1;
 G.wheat = s.wheat || 60;
 G.player = s.player;
+if (!G.player.oc) G.player.oc = {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'};
 G.playerHp = s.playerHp;
 G.playerShield = s.playerShield || 0;
 G.discovered = s.discovered;
@@ -1808,7 +1876,7 @@ G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2
 } else if (isNew) {
 G.level = 1;
 G.wheat = 60;
-G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', colorId:'blue'};
+G.player = {x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', oc:{body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'}};
 G.playerHp = 80;
 G.playerShield = 0;
 G.discovered = {raptor:true};
@@ -2000,7 +2068,7 @@ function handlePvPMessage(data) {
         } else {
             if (G.pvp.reqTo === data.sender) addChatMessage('System', data.name + ' denied PvP.');
             G.pvp.reqTo = null;
-            G.pvp.cd = 300; // 5s CD
+            G.pvp.cd = 1800; // 30s CD
         }
     } else if (data.type === 'pvp_action') {
         if (G.state === 'battle' && G.battle.isPvP && G.battle.opId === data.sender) {
@@ -2012,6 +2080,7 @@ function handlePvPMessage(data) {
                 else { b.php -= (dmg - b.php_shield); b.php_shield = 0; }
                 G.playerHp = Math.max(0, b.php);
                 G.playerShield = b.php_shield;
+                G.lastDamageTick = G.tick; // Reset passive heal
 
                 b.pshake = 18;
                 b.dnums.push({x:canvas.width*0.28, y:canvas.height*0.52, val:dmg, col:'#ff8844', life:60});
@@ -2122,7 +2191,7 @@ function startSyncLoop() {
             const myData = {
                 x: G.player.x, y: G.player.y, dk: G.player.dk, 
                 face: G.player.face, anim: G.player.anim, 
-                hat: G.player.hat, colorId: G.player.colorId, name: G.username
+                hat: G.player.hat, oc: G.player.oc, name: G.username
             };
 
             if (G.isHost) {
