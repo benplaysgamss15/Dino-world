@@ -136,15 +136,16 @@ state:'intro',
 level: 1,
 wheat:60, tick:0,
 cam:{x:0,y:0},
-player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', oc: {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'}},
+player:{x:WS/2*TS, y:WS/2*TS, dk:'raptor', face:1, anim:0, moving:false, upg:{hp:0,atk:0,spd:0}, hat:'bucket', colorId:'blue', oc: {body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'}},
 custPart: 'body',
 playerHp:80,
 playerShield: 0,
 lastDamageTick: 0,
 discovered:{raptor:true},
 wilds:[],
-battle:{isPvP:false, opId:null, ek:null, ehp:0, emhp:0, eshield:0, emshield:0, ename:'', eoc:null, ehat:'', php:0, pmhp:0, php_shield:0, pmhp_shield:0, turn:'player', log:[], anim:false, res:null, eshake:0, pshake:0, dnums:[]},
+battle:{isPvP:false, isCoop:false, isP1:true, opId:null, ek:null, ehp:0, emhp:0, eshield:0, emshield:0, ename:'', eoc:null, ehat:'', p1:null, p2:null, php:0, pmhp:0, php_shield:0, pmhp_shield:0, turn:'player', log:[], anim:false, res:null, eshake:0, pshake:0, ptshake:0, dnums:[]},
 pvp: { closeId: null, reqTo: null, reqFrom: null, reqFromName: '', reqFromStats: null, cd: 0, msgTimer: 0, opponentId: null },
+coop: { partnerId: null, partnerName: '', reqTo: null, reqFrom: null, reqFromName: '', step: 0, msgTimer: 0, msgText: '', engageTick: 0 },
 keys:{},
 joy:{on:false,sx:0,sy:0,dx:0,dy:0},
 btns:[],
@@ -193,7 +194,7 @@ localStorage.removeItem('dinoworld_save');
 loadSaveData();
 
 function saveGame() {
-if (G.state === 'intro') return;
+if (G.state === 'intro' || G.coop.partnerId) return; // DO NOT SAVE COOP SESSIONS
 try {
 const data = {
 ts: Date.now(),
@@ -270,8 +271,8 @@ else if(t===4) tileClr[y][x]=VRED[Math.abs(x*7+y*3)%VRED.length];
 generateWorld();
 
 function pDino(){ return DINOS[G.player.dk]; }
-function pMaxHp(){ return Math.floor((pDino().hp + G.player.upg.hp*28) * R_MULT[pDino().rarity]); }
-function pAtk(){ return Math.floor((pDino().atk + G.player.upg.atk*5) * R_MULT[pDino().rarity]); }
+function pMaxHp(){ return Math.floor((pDino().hp + G.player.upg.hp*28) * R_MULT[pDino().rarity] * (G.coop.partnerId ? 0.9 : 1)); }
+function pAtk(){ return Math.floor((pDino().atk + G.player.upg.atk*5) * R_MULT[pDino().rarity] * (G.coop.partnerId ? 0.9 : 1)); }
 function pSpd(){ return pDino().spd + G.player.upg.spd*0.5; }
 
 // ── HELPERS ──
@@ -693,6 +694,11 @@ const headOff=DINOS[p.dk].sz*1.25*0.55;
 const bob=Math.sin(p.anim*0.18)*2.5;
 drawHat(G.player.hat || 'bucket',sx,sy-headOff+bob-2,1.1);
 
+if (G.coop.partnerId) {
+    ctx.fillStyle='#44aaff'; ctx.font='bold 11px Courier New'; ctx.textAlign='center';
+    ctx.fillText('Bonded to ' + G.coop.partnerName, sx, sy - DINOS[p.dk].sz - 40);
+}
+
 // HP and Shield Bar
 const pct=G.playerHp/pMaxHp();
 const col=pct>0.5?'#44cc44':pct>0.25?'#cccc44':'#cc4444';
@@ -776,6 +782,7 @@ const addS = Math.floor(pMaxHp()*0.15);
 if(G.wheat>=40 && G.playerShield < maxS){
     G.wheat-=40; G.playerShield = Math.min(maxS, G.playerShield + addS);
     spawnParticles(W/2,H-80,'#44aaff',12);
+    syncCoopData();
 }
 },'🛡️');
 
@@ -784,6 +791,7 @@ const addH = Math.floor(pMaxHp()*0.1);
 if(G.wheat>=5 && G.playerHp < pMaxHp()){
     G.wheat-=5; G.playerHp = Math.min(pMaxHp(), G.playerHp + addH);
     spawnParticles(W/2,H-80,'#44ff44',8);
+    syncCoopData();
 }
 },'💊');
 
@@ -832,31 +840,31 @@ if (G.pvp.cd > 0) G.pvp.cd--;
 
 if (G.pvp.reqFrom) {
     const rw = 280, rh = 80;
-    const rx = W/2 - rw/2, ry = H - 240;
+    const rx = W/2 + 10, ry = H - 240; // Shifted right
     rr(rx, ry, rw, rh, 8, 'rgba(20,20,40,0.95)', '#8822cc', 2);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Courier New'; ctx.textAlign = 'center';
-    ctx.fillText(G.pvp.reqFromName + ' requested PvP!', W/2, ry + 25);
+    ctx.fillText(G.pvp.reqFromName + ' requested PvP!', rx + rw/2, ry + 25);
     
     btn(rx + 20, ry + 45, 110, 26, 'Deny', '#cc2222', '#fff', () => {
-        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
+        sendTo(G.pvp.reqFrom, { type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
         G.pvp.reqFrom = null;
         G.pvp.cd = 1800; // 30s CD
     }, '✖');
     
     btn(rx + 150, ry + 45, 110, 26, 'Accept', '#22cc22', '#fff', () => {
-        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: true, stats: getMyBattleStats() });
+        sendTo(G.pvp.reqFrom, { type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: true, stats: getMyBattleStats() });
         startPvPBattle(G.pvp.reqFrom, G.pvp.reqFromStats, false); 
         G.pvp.reqFrom = null;
     }, '✔');
-} else if (G.pvp.closeId && !G.pvp.reqTo && G.encCd <= 0) {
+} else if (G.pvp.closeId && !G.pvp.reqTo && G.encCd <= 0 && G.pvp.closeId !== G.coop.partnerId) {
     const op = G.otherPlayers[G.pvp.closeId];
     if (op) {
-        btn(W/2 - 80, H - 150, 160, 36, 'Request PvP', G.pvp.cd > 0 ? '#888888' : '#cc6622', '#fff', () => {
+        btn(W/2 + 20, H - 150, 160, 36, 'Request PvP', G.pvp.cd > 0 ? '#888888' : '#cc6622', '#fff', () => {
             if(G.pvp.cd > 0) {
                 G.pvp.msgTimer = 180; // 3 seconds
             } else {
                 G.pvp.reqTo = G.pvp.closeId;
-                sendPvP({ type: 'pvp_request', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player', stats: getMyBattleStats() });
+                sendTo(G.pvp.closeId, { type: 'pvp_request', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player', stats: getMyBattleStats() });
                 addChatMessage('System', 'PvP Request Sent!');
             }
         }, '⚔️');
@@ -869,6 +877,69 @@ if (G.pvp.msgTimer > 0) {
     ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center';
     ctx.fillText("PvP request is on cooldown!", W/2, H/2 - 60 - (180 - G.pvp.msgTimer) * 0.2);
     ctx.shadowBlur = 0;
+}
+
+// ── CO-OP SYSTEM UI ──
+if (G.coop.msgTimer > 0) {
+    G.coop.msgTimer--;
+    ctx.fillStyle = '#ff4444'; ctx.shadowBlur = 4;
+    ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(G.coop.msgText, W/2, H/2 - 80 - (180 - G.coop.msgTimer) * 0.2);
+    ctx.shadowBlur = 0;
+}
+
+if (G.coop.partnerId) {
+    btn(W/2 - 180, H - 150, 160, 36, 'Leave Co-op', '#2266cc', '#fff', () => {
+        sendTo(G.coop.partnerId, { type: 'coop_leave', target: G.coop.partnerId });
+        breakCoopBond();
+    }, '💔');
+    ctx.fillStyle='#44aaff'; ctx.font='bold 14px Courier New'; ctx.textAlign='center';
+    ctx.fillText(`Bonded to ${G.coop.partnerName}`, W/2, H - 180);
+} else {
+    if (G.coop.reqFrom) {
+        const rw = 280, rh = 80;
+        const rx = W/2 - rw - 10, ry = H - 240; // Shifted left
+        rr(rx, ry, rw, rh, 8, 'rgba(20,40,80,0.95)', '#2266cc', 2);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText(G.coop.reqFromName + ' wants to Co-op!', rx + rw/2, ry + 25);
+        btn(rx + 20, ry + 45, 110, 26, 'Deny', '#cc2222', '#fff', () => {
+            sendTo(G.coop.reqFrom, { type: 'coop_reply', target: G.coop.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
+            G.coop.reqFrom = null;
+        }, '✖');
+        btn(rx + 150, ry + 45, 110, 26, 'Accept', '#22cc22', '#fff', () => { G.coop.step = 2; }, '✔');
+    } else if (G.coop.step === 1 || G.coop.step === 2) {
+        const rw = 320, rh = 100;
+        const rx = W/2 - rw/2, ry = H - 250;
+        rr(rx, ry, rw, rh, 8, 'rgba(60,20,20,0.95)', '#cc2222', 2);
+        ctx.fillStyle = '#ffaa44'; ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText('WARNING: Solo Save Data', W/2, ry + 25);
+        ctx.fillText('will be reset to Lvl 1!', W/2, ry + 45);
+        btn(rx + 20, ry + 65, 130, 26, 'Cancel', '#666', '#fff', () => {
+            if (G.coop.step === 2 && G.coop.reqFrom) {
+                sendTo(G.coop.reqFrom, { type: 'coop_reply', target: G.coop.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
+                G.coop.reqFrom = null;
+            }
+            G.coop.step = 0;
+        }, '✖');
+        btn(rx + 170, ry + 65, 130, 26, 'Confirm', '#cc2222', '#fff', () => {
+            if (G.coop.step === 1) {
+                sendTo(G.pvp.closeId, { type: 'coop_req', target: G.pvp.closeId, sender: (G.isHost ? 'host' : G.peer.id), name: G.username || 'Player' });
+                G.coop.reqTo = G.pvp.closeId; G.coop.step = 0;
+                addChatMessage('System', 'Co-op Request Sent!');
+            } else if (G.coop.step === 2) {
+                sendTo(G.coop.reqFrom, { type: 'coop_reply', target: G.coop.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: true, name: G.username || 'Player' });
+                formCoopBond(G.coop.reqFrom, G.coop.reqFromName);
+                G.coop.reqFrom = null; G.coop.step = 0;
+            }
+        }, '✔');
+    } else if (G.pvp.closeId && !G.coop.reqTo && G.encCd <= 0) { 
+        const op = G.otherPlayers[G.pvp.closeId];
+        if (op && !op.coopName) { // Don't ask if they are bonded
+            btn(W/2 - 180, H - 150, 160, 36, 'Add Friend', '#2266cc', '#fff', () => {
+                G.coop.step = 1; 
+            }, '🤝');
+        }
+    }
 }
 
 // ── CHAT BUTTON & RENDER ──
@@ -931,25 +1002,66 @@ if (b.isPvP && b.eshield > 0) {
 ctx.fillStyle=RARITY_COLOR[en.rarity];ctx.font='bold 14px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 if (b.isPvP) {
     ctx.fillText(`⚔️ ${b.ename}'s ${en.name}`, W*0.46+4, 42);
+} else if (b.isCoop) {
+    ctx.fillText(`⚠️ Co-op: ${en.name} [BUFFED]`, W*0.46+4, 42);
 } else {
     ctx.fillText(`${en.em} ${en.name}`, W*0.46+4, 42);
 }
 
-const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
-const pDk=G.player.dk;
-drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1, G.player.oc);
-const bpHeadY=H*0.52-DINOS[pDk].sz*1.65*0.55;
-drawHat(G.player.hat || 'bucket',W*0.28+pshake,bpHeadY,1.5);
-const phPct=b.php/b.pmhp;
-const phCol=phPct>0.5?'#44cc44':phPct>0.25?'#cccc44':'#cc4444';
-hpBar(W*0.05,H*0.68,W*0.36,18,b.php,b.pmhp,phCol,`${b.php}/${b.pmhp}`);
-if (b.php_shield > 0) {
-    hpBar(W*0.05,H*0.68+20,W*0.36,10,b.php_shield,Math.floor(b.pmhp*0.4),'#44aaff',`SHIELD`);
+if (b.isCoop) {
+    // Render P1 (Initiator)
+    const p1shake = b.isP1 ? b.pshake : b.ptshake;
+    drawDino(b.p1.dk, W*0.28+p1shake, H*0.52, 1, G.tick, 1.65, b.p1.hp>0?1:0.3, b.p1.oc);
+    drawHat(b.p1.hat || 'bucket', W*0.28+p1shake, H*0.52 - DINOS[b.p1.dk].sz*1.65*0.55, 1.5);
+    hpBar(W*0.05, H*0.66, W*0.36, 18, b.p1.hp, b.p1.mhp, '#44cc44', `${b.p1.name}`);
+    if(b.p1.shield>0) hpBar(W*0.05, H*0.66+20, W*0.36, 6, b.p1.shield, b.p1.mshield, '#44aaff');
+
+    // Render P2 (Partner)
+    const p2shake = !b.isP1 ? b.pshake : b.ptshake;
+    drawDino(b.p2.dk, W*0.12+p2shake, H*0.42, 1, G.tick, 1.4, b.p2.hp>0?1:0.3, b.p2.oc);
+    drawHat(b.p2.hat || 'bucket', W*0.12+p2shake, H*0.42 - DINOS[b.p2.dk].sz*1.4*0.55, 1.3);
+    hpBar(W*0.05, H*0.56, W*0.25, 14, b.p2.hp, b.p2.mhp, '#44cc44', `${b.p2.name}`);
+    if(b.p2.shield>0) hpBar(W*0.05, H*0.56+16, W*0.25, 4, b.p2.shield, b.p2.mshield, '#44aaff');
+
+    let tName = b.turn === 'p1' ? b.p1.name : (b.turn === 'p2' ? b.p2.name : 'Enemy');
+    ctx.fillStyle = '#ff8844'; ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(`▶ ${tName}'s Turn`, W*0.65+65, H*0.73-6);
+
+    const isMyCoopTurn = b.turn === (b.isP1 ? 'p1' : 'p2');
+    if (!b.res && isMyCoopTurn && G.playerHp > 0) {
+        const bx=W*0.65, by=H*0.73;
+        btn(bx,by,130,46,'Attack','#cc2222','#fff',doCoopAttack,'⚔️');
+        btn(bx,by+54,130,46,'Run Away','#224422','#fff',doCoopRun,'🏃');
+    }
+} else {
+    // Solo / PvP Render
+    const pshake=b.pshake>0?(Math.random()-0.5)*8:0;
+    const pDk=G.player.dk;
+    drawDino(pDk,W*0.28+pshake,H*0.52,1,G.tick,1.65,1, G.player.oc);
+    const bpHeadY=H*0.52-DINOS[pDk].sz*1.65*0.55;
+    drawHat(G.player.hat || 'bucket',W*0.28+pshake,bpHeadY,1.5);
+    const phPct=b.php/b.pmhp;
+    const phCol=phPct>0.5?'#44cc44':phPct>0.25?'#cccc44':'#cc4444';
+    hpBar(W*0.05,H*0.68,W*0.36,18,b.php,b.pmhp,phCol,`${b.php}/${b.pmhp}`);
+    if (b.php_shield > 0) {
+        hpBar(W*0.05,H*0.68+20,W*0.36,10,b.php_shield,Math.floor(b.pmhp*0.4),'#44aaff',`SHIELD`);
+    }
+
+    const pd=pDino();
+    ctx.fillStyle='#aaffaa';ctx.font='bold 13px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(`${pd.em} ${pd.name} [YOU]`,W*0.05,H*0.68-14);
+    
+    if(!b.res){
+        const bx=W*0.65, by=H*0.73;
+        btn(bx,by,130,46,'Attack','#cc2222','#fff',doAttack,'⚔️');
+        btn(bx,by+54,130,46,'Run Away','#224422','#fff',doRun,'🏃');
+        ctx.fillStyle=b.turn==='player'?'#44ff44':'#ff8844';
+        ctx.font='bold 13px Courier New';ctx.textAlign='center';ctx.textBaseline='bottom';
+        ctx.fillText(b.turn==='player'?'▶ Your Turn':'▶ Enemy Turn',bx+65,by-6);
+    }
 }
 
-const pd=pDino();
-ctx.fillStyle='#aaffaa';ctx.font='bold 13px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
-ctx.fillText(`${pd.em} ${pd.name} [YOU]`,W*0.05,H*0.68-14);
+// Log box
 rr(W*0.05,H*0.73,W*0.56,105,8,'rgba(0,0,0,0.8)','rgba(100,130,200,0.3)',1);
 b.log.slice(0,4).forEach((line,i)=>{
 ctx.fillStyle=i===0?'#ffffff':`rgba(255,255,255,${0.55-i*0.12})`;
@@ -986,16 +1098,10 @@ G.volcanoTimer = 10800;
 G.volcanoActive = 0; G.hazards =[];
 G.cam.x = G.player.x - canvas.width/2;
 G.cam.y = G.player.y - canvas.height/2;
+syncCoopData();
 exitBattle();
 },'🌋');
-} else if(!b.res){
-const bx=W*0.65, by=H*0.73;
-btn(bx,by,130,46,'Attack','#cc2222','#fff',doAttack,'⚔️');
-btn(bx,by+54,130,46,'Run Away','#224422','#fff',doRun,'🏃');
-ctx.fillStyle=b.turn==='player'?'#44ff44':'#ff8844';
-ctx.font='bold 13px Courier New';ctx.textAlign='center';ctx.textBaseline='bottom';
-ctx.fillText(b.turn==='player'?'▶ Your Turn':'▶ Enemy Turn',bx+65,by-6);
-} else {
+} else if(b.res) {
 const win=b.res==='win';
 rr(W/2-165,H/2-70,330,140,12,win?'rgba(0,80,0,0.92)':'rgba(80,0,0,0.92)',win?'#44ff44':'#ff4444',3);
 ctx.fillStyle=win?'#44ff44':'#ff4444';ctx.shadowColor=win?'#44ff44':'#ff4444';ctx.shadowBlur=15;
@@ -1006,6 +1112,7 @@ ctx.fillText(b.log[0]||'',W/2,H/2);
 btn(W/2-70,H/2+25,140,40,'Continue','#224488','#fff',exitBattle,'▶');
 }
 }
+
 // ── BATTLE LOGIC ──
 function getMyBattleStats() {
     return {
@@ -1026,27 +1133,43 @@ function startPvPBattle(opId, opStats, isMyTurn) {
     G.state = 'battle';
     G.pvp.opponentId = opId;
     G.battle = {
-        isPvP: true,
+        isPvP: true, isCoop: false,
         opId: opId,
         ek: opStats.dk,
-        ehp: opStats.hp,
-        emhp: opStats.mhp,
-        eshield: opStats.shield,
-        emshield: opStats.mshield,
-        ename: opStats.name,
-        eoc: opStats.oc,
-        ehat: opStats.hat,
-        eatk: opStats.atk,
-        espd: opStats.spd,
+        ehp: opStats.hp, emhp: opStats.mhp, eshield: opStats.shield, emshield: opStats.mshield,
+        ename: opStats.name, eoc: opStats.oc, ehat: opStats.hat, eatk: opStats.atk, espd: opStats.spd,
 
-        php: G.playerHp,
-        pmhp: pMaxHp(),
-        php_shield: G.playerShield,
-        pmhp_shield: Math.floor(pMaxHp()*0.4),
-
+        php: G.playerHp, pmhp: pMaxHp(), php_shield: G.playerShield, pmhp_shield: Math.floor(pMaxHp()*0.4),
         turn: isMyTurn ? 'player' : 'enemy', 
         log:[`⚔️ Friendly PvP with ${opStats.name}!`],
         anim: false, res: null, eshake: 0, pshake: 0, dnums:[]
+    };
+    G.btns =[];
+}
+
+function startCoopBattle(ek, isBoss, isP1, initiatorStats) {
+    const en = DINOS[ek];
+    G.state = 'battle';
+    
+    let myStats = getMyBattleStats();
+    let ptStats = isP1 ? G.otherPlayers[G.coop.partnerId] : initiatorStats;
+
+    // Build the partner stats payload since G.otherPlayers might lack exact current HP
+    if (!ptStats.hp) ptStats = initiatorStats; 
+
+    G.battle = {
+        isPvP: false, isCoop: true, isP1: isP1,
+        ek: ek,
+        ehp: Math.floor(en.hp * R_MULT[en.rarity] * 1.3),
+        emhp: Math.floor(en.hp * R_MULT[en.rarity] * 1.3),
+        eatk: Math.floor(en.atk * 1.3),
+        
+        p1: isP1 ? myStats : ptStats,
+        p2: isP1 ? ptStats : myStats,
+        
+        turn: 'p1', 
+        log:[isBoss?`⚠️ CO-OP BOSS: ${en.name}!`:`Co-op Battle vs ${en.name}!`],
+        anim: false, res: null, eshake: 0, pshake: 0, ptshake: 0, dnums: []
     };
     G.btns =[];
 }
@@ -1055,7 +1178,7 @@ function startBattle(ek,isBoss){
 const en=DINOS[ek];
 G.state='battle';
 Object.assign(G.battle,{
-isPvP:false, opId:null, ek, ehp: Math.floor(en.hp * R_MULT[en.rarity]), emhp: Math.floor(en.hp * R_MULT[en.rarity]), eshield:0, emshield:0,
+isPvP:false, isCoop: false, opId:null, ek, ehp: Math.floor(en.hp * R_MULT[en.rarity]), emhp: Math.floor(en.hp * R_MULT[en.rarity]), eshield:0, emshield:0,
 php:G.playerHp, pmhp:pMaxHp(), php_shield:G.playerShield, pmhp_shield:Math.floor(pMaxHp()*0.4),
 turn:'player',log:[isBoss?`⚠️ BOSS: ${en.name} appears!`:`Wild ${en.name} appeared!`],
 anim:false,res:null,eshake:0,pshake:0,dnums:[],isBoss:!!isBoss
@@ -1070,12 +1193,10 @@ b.anim=true;
 const dmg = pAtk();
 
 if (b.isPvP) {
-    sendPvP({ type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'attack', dmg: dmg });
-    
+    sendTo(b.opId, { type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'attack', dmg: dmg });
     if (b.eshield >= dmg) { b.eshield -= dmg; }
     else { b.ehp -= (dmg - b.eshield); b.eshield = 0; }
     b.ehp = Math.max(0, b.ehp);
-    
     b.eshake=20;
     b.dnums.push({x:canvas.width*0.67,y:canvas.height*0.37,val:dmg,col:'#ff4444',life:60});
     b.log.unshift(`You attack for ${dmg} dmg!`);if(b.log.length>5)b.log.pop();
@@ -1121,7 +1242,7 @@ const b=G.battle;if(b.res) return;
 b.anim=true;
 const en=DINOS[b.ek];
 let dmg = Math.max(1, Math.floor(en.atk * R_MULT[en.rarity]) + Math.floor(Math.random()*10)-5);
-if(b.ek === 'megalodon') dmg = 125 + Math.floor(Math.random() * 20); // Scaled for Boss
+if(b.ek === 'megalodon') dmg = 125 + Math.floor(Math.random() * 20); 
 else if(b.ek === 'indominus') dmg = 175 + Math.floor(Math.random() * 50);
 
 if (b.php_shield >= dmg) {
@@ -1132,6 +1253,7 @@ if (b.php_shield >= dmg) {
 }
 G.playerHp = Math.max(0, b.php);
 G.playerShield = b.php_shield;
+G.lastDamageTick = G.tick; // Reset passive heal
 
 b.pshake=18;
 b.dnums.push({x:canvas.width*0.28,y:canvas.height*0.52,val:dmg,col:'#ff8844',life:60});
@@ -1148,16 +1270,162 @@ b.log.unshift(`💀 Defeated! Lost ${pen} Buckets.`);b.res='lose';
 
 function doRun(){
 const b=G.battle;if(b.res||b.anim) return;
-
 if (b.isPvP) {
-    sendPvP({ type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'run' });
+    sendTo(b.opId, { type: 'pvp_action', target: b.opId, sender: (G.isHost ? 'host' : G.peer.id), action: 'run' });
     b.log.unshift('You fled the friendly match!');
     setTimeout(exitBattle, 500);
     return;
 }
-
 if(Math.random()<0.62){b.log.unshift('Got away safely!');setTimeout(exitBattle,500);}
 else{b.log.unshift("Can't escape!");b.turn='enemy';setTimeout(enemyTurn,350);}
+}
+
+function doCoopAttack() {
+    const b = G.battle;
+    if (b.turn !== (b.isP1 ? 'p1' : 'p2') || b.anim || b.res) return;
+    b.anim = true;
+    const dmg = pAtk();
+    
+    sendTo(G.coop.partnerId, { type: 'coop_action', target: G.coop.partnerId, action: 'attack', dmg: dmg });
+    
+    b.ehp = Math.max(0, b.ehp - dmg);
+    b.eshake = 20;
+    b.dnums.push({x:canvas.width*0.67, y:canvas.height*0.37, val:dmg, col:'#ff4444', life:60});
+    b.log.unshift(`${G.username || 'You'} attacks for ${dmg} dmg!`); if(b.log.length>5) b.log.pop();
+    spawnParticles(canvas.width*0.67, canvas.height*0.37, '#ff4444', 6);
+    
+    checkCoopWinNextTurn();
+}
+
+function doCoopRun() {
+    const b = G.battle;
+    if (b.turn !== (b.isP1 ? 'p1' : 'p2') || b.anim || b.res) return;
+    b.anim = true;
+    b.log.unshift('You fled the Co-op match!');
+    sendTo(G.coop.partnerId, { type: 'coop_action', target: G.coop.partnerId, action: 'run' });
+    setTimeout(exitBattle, 500);
+}
+
+function checkCoopWinNextTurn() {
+    const b = G.battle;
+    if (b.ehp <= 0) {
+        setTimeout(() => {
+            const rew = Math.floor(DINOS[b.ek].rw * (b.isBoss?3:1) * 1.5);
+            G.wheat += rew;
+            b.log.unshift(`🪣 Won ${rew} Shared Buckets!`);
+            if (!G.discovered[b.ek]) { G.discovered[b.ek] = true; b.log.unshift(`📘 ${DINOS[b.ek].name} added to Index!`); }
+            if(b.ek === 'megalodon' && G.level === 1){ b.res = 'level2'; } 
+            else { b.res = 'win'; }
+            syncCoopData();
+            b.anim = false;
+            spawnParticles(canvas.width*0.67, canvas.height*0.37, '#55ddff', 16);
+        }, 500);
+    } else {
+        setTimeout(() => { 
+            b.anim = false; 
+            b.turn = b.turn === 'p1' ? 'p2' : 'enemy'; 
+            if (b.turn === 'enemy' && b.isP1) { // Host runs enemy turn
+                runCoopEnemyTurn();
+            }
+        }, 520);
+    }
+}
+
+function runCoopEnemyTurn() {
+    const b = G.battle;
+    const en = DINOS[b.ek];
+    let dmg = Math.max(1, Math.floor(b.eatk) + Math.floor(Math.random()*10)-5);
+    if(b.ek === 'megalodon') dmg = 160 + Math.floor(Math.random() * 25);
+    else if(b.ek === 'indominus') dmg = 220 + Math.floor(Math.random() * 60);
+
+    let target = 'p1';
+    if (b.p1.hp <= 0 && b.p2.hp > 0) target = 'p2';
+    else if (b.p2.hp <= 0 && b.p1.hp > 0) target = 'p1';
+    else if (Math.random() < 0.5) target = 'p2';
+
+    sendTo(G.coop.partnerId, { type: 'coop_enemy_turn', target: G.coop.partnerId, t: target, dmg: dmg });
+    applyCoopEnemyTurn(target, dmg);
+}
+
+function applyCoopEnemyTurn(target, dmg) {
+    const b = G.battle;
+    b.anim = true;
+    const en = DINOS[b.ek];
+    
+    let pRef = target === 'p1' ? b.p1 : b.p2;
+    let isMe = (target === 'p1' && b.isP1) || (target === 'p2' && !b.isP1);
+
+    if (pRef.shield >= dmg) { pRef.shield -= dmg; }
+    else { pRef.hp -= (dmg - pRef.shield); pRef.shield = 0; }
+    pRef.hp = Math.max(0, pRef.hp);
+
+    if (isMe) {
+        G.playerHp = pRef.hp;
+        G.playerShield = pRef.shield;
+        G.lastDamageTick = G.tick; // Reset passive heal
+        b.pshake = 18;
+        b.dnums.push({x:canvas.width*0.28, y:canvas.height*0.52, val:dmg, col:'#ff8844', life:60});
+        spawnParticles(canvas.width*0.28, canvas.height*0.52, '#ff8844', 6);
+    } else {
+        b.ptshake = 18;
+        b.dnums.push({x:canvas.width*0.12, y:canvas.height*0.42, val:dmg, col:'#ff8844', life:60});
+        spawnParticles(canvas.width*0.12, canvas.height*0.42, '#ff8844', 6);
+    }
+
+    b.log.unshift(`${en.name} hits ${pRef.name} for ${dmg}!`); if(b.log.length>5) b.log.pop();
+    
+    setTimeout(() => {
+        b.anim = false;
+        if (b.p1.hp <= 0 && b.p2.hp <= 0) {
+            const pen = Math.floor(G.wheat*0.2); G.wheat = Math.max(0, G.wheat-pen);
+            b.log.unshift(`💀 Party Defeated! Lost ${pen} Shared Buckets.`); b.res = 'lose';
+            syncCoopData();
+        } else {
+            b.turn = 'p1';
+            if (b.p1.hp <= 0) b.turn = 'p2';
+        }
+    }, 420);
+}
+
+function executeCoopAction(data) {
+    const b = G.battle;
+    b.anim = true;
+    if (data.action === 'attack') {
+        b.ehp = Math.max(0, b.ehp - data.dmg);
+        b.eshake = 20;
+        b.dnums.push({x:canvas.width*0.67, y:canvas.height*0.37, val:data.dmg, col:'#ff4444', life:60});
+        b.log.unshift(`${b.isP1 ? b.p2.name : b.p1.name} attacks for ${data.dmg} dmg!`); if(b.log.length>5) b.log.pop();
+        spawnParticles(canvas.width*0.67, canvas.height*0.37, '#ff4444', 6);
+        checkCoopWinNextTurn();
+    } else if (data.action === 'run') {
+        b.log.unshift(`${b.isP1 ? b.p2.name : b.p1.name} fled the match!`);
+        b.res = 'win'; 
+    } else if (data.action === 'skip') {
+        b.log.unshift(`${b.isP1 ? b.p2.name : b.p1.name} is knocked out! Skipping...`); if(b.log.length>5) b.log.pop();
+        b.turn = b.turn === 'p1' ? 'p2' : 'enemy';
+        b.anim = false;
+        if (b.turn === 'enemy' && b.isP1) setTimeout(runCoopEnemyTurn, 1000);
+    }
+}
+
+function updateBattle(){
+    const b = G.battle;
+    if(b.eshake>0) b.eshake--;
+    if(b.pshake>0) b.pshake--;
+    if(b.ptshake>0) b.ptshake--;
+    b.dnums=b.dnums.filter(dn=>{dn.life--;return dn.life>0;});
+
+    // Auto-skip if dead in Co-op
+    if (b.isCoop && b.turn === (b.isP1 ? 'p1' : 'p2') && !b.anim && !b.res && G.playerHp <= 0) {
+        b.anim = true;
+        setTimeout(() => {
+            sendTo(G.coop.partnerId, { type: 'coop_action', target: G.coop.partnerId, action: 'skip' });
+            b.log.unshift(`${G.username || 'You'} is knocked out! Skipping...`); if(b.log.length>5) b.log.pop();
+            b.turn = b.turn === 'p1' ? 'p2' : 'enemy';
+            b.anim = false;
+            if (b.turn === 'enemy' && b.isP1) runCoopEnemyTurn();
+        }, 1000);
+    }
 }
 
 function exitBattle(){
@@ -1167,6 +1435,8 @@ if (G.battle.isPvP) {
     else G.playerHp = G.battle.php;
     G.playerShield = G.battle.php_shield;
     G.pvp.cd = 1800; // 30s Cooldown
+} else if (G.battle.isCoop) {
+    G.playerHp = G.battle.res === 'lose' ? pMaxHp() : Math.max(5, G.playerHp);
 } else {
     G.playerHp = G.battle.res === 'lose' ? pMaxHp() : Math.max(5, G.battle.php);
 }
@@ -1298,8 +1568,9 @@ maxed?'#ffaa00':can?'#fff':'#665',
 ()=>{
 if(!maxed&&G.wheat>=cost){
 G.wheat-=cost;G.player.upg[upg.k]++;
-if(upg.k==='hp') G.playerHp += Math.floor(28 * R_MULT[pDino().rarity]);
+if(upg.k==='hp') G.playerHp += Math.floor(28 * R_MULT[pDino().rarity] * (G.coop.partnerId ? 0.9 : 1));
 spawnParticles(x+cw2/2,y+175,'#55ccff',10);
+syncCoopData();
 }
 });
 
@@ -1321,7 +1592,11 @@ ctx.fillStyle='#aaddff';ctx.font='bold 14px Courier New';ctx.fillText('+15% Shie
 ctx.fillText(`Cost: 🪣 ${scost}`,hx+hhw/2,hy+60);
 btn(hx,hy,hhw,80,'',scan?'rgba(0,0,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
     const maxS = Math.floor(pMaxHp()*0.4); const addS = Math.floor(pMaxHp()*0.15);
-    if(G.wheat>=scost && G.playerShield < maxS){G.wheat-=scost;G.playerShield=Math.min(maxS, G.playerShield+addS);spawnParticles(W/2,H/2,'#44aaff',14);}
+    if(G.wheat>=scost && G.playerShield < maxS){
+        G.wheat-=scost;G.playerShield=Math.min(maxS, G.playerShield+addS);
+        spawnParticles(W/2,H/2,'#44aaff',14);
+        syncCoopData();
+    }
 });
 
 // Heal Buy
@@ -1332,7 +1607,11 @@ ctx.font='24px sans-serif';ctx.fillText('💊',hx+hhw+10+hhw/2,hy+10);
 ctx.fillStyle='#aaffaa';ctx.font='bold 14px Courier New';ctx.fillText('+10% Heal',hx+hhw+10+hhw/2,hy+42);
 ctx.fillText(`Cost: 🪣 ${hcost}`,hx+hhw+10+hhw/2,hy+60);
 btn(hx+hhw+10,hy,hhw,80,'',hcan?'rgba(0,0,0,0.01)':'rgba(0,0,0,0.01)','rgba(0,0,0,0)',()=>{
-    if(G.wheat>=hcost && G.playerHp < pMaxHp()){G.wheat-=hcost;G.playerHp=Math.min(pMaxHp(), G.playerHp + Math.floor(pMaxHp()*0.1));spawnParticles(W/2,H/2,'#44ff44',14);}
+    if(G.wheat>=hcost && G.playerHp < pMaxHp()){
+        G.wheat-=hcost;G.playerHp=Math.min(pMaxHp(), G.playerHp + Math.floor(pMaxHp()*0.1));
+        spawnParticles(W/2,H/2,'#44ff44',14);
+        syncCoopData();
+    }
 });
 
 
@@ -1506,6 +1785,44 @@ ctx.fillText('[ Click or Press Any Key to Start ]',W/2,Math.max(iby + 75, H*0.9)
 }
 }
 }
+
+// ── CO-OP BONDING FUNCTIONS ──
+function formCoopBond(id, name) {
+    G.coop.partnerId = id;
+    G.coop.partnerName = name;
+    resetForCoop();
+    addChatMessage('System', `Bonded with ${name}! Data reset to Co-op Mode.`);
+}
+function breakCoopBond() {
+    G.coop.partnerId = null;
+    G.coop.partnerName = '';
+    resetForCoop();
+    addChatMessage('System', `Co-op ended. Data reset to Solo Mode.`);
+}
+function resetForCoop() {
+    G.level = 1;
+    G.wheat = 70;
+    G.player.dk = 'raptor';
+    G.player.upg = {hp:0, atk:0, spd:0};
+    G.playerHp = pMaxHp();
+    G.playerShield = 0;
+    G.discovered = {raptor:true};
+    G.volcanoActive = 0;
+    G.megaOnLand = false;
+    G.lastDamageTick = G.tick;
+    generateWorld();
+    spawnWilds();
+    spawnMega();
+}
+function syncCoopData() {
+    if(G.coop.partnerId) {
+        sendTo(G.coop.partnerId, {
+            type: 'coop_sync', target: G.coop.partnerId,
+            wheat: G.wheat, level: G.level, disc: G.discovered
+        });
+    }
+}
+
 // ── SPAWNING ──
 function spawnWilds(){
 G.wilds =[];
@@ -1546,6 +1863,7 @@ if (G.playerHp <= 0 && G.state === 'world') {
     G.playerHp = pMaxHp();
     G.playerShield = 0;
     G.wheat = Math.max(0, Math.floor(G.wheat * 0.9)); // Lose 10% buckets on death
+    syncCoopData();
     G.player.x = WS/2*TS; 
     G.player.y = WS/2*TS;
 }
@@ -1671,30 +1989,36 @@ const w=G.wilds[i];
 const dist=Math.hypot(p.x-w.x,p.y-w.y);
 const trigger=38+DINOS[w.key].sz;
 if(dist<trigger){
-const wasBoss=w.isBoss;
-G.wilds.splice(i,1);
-startBattle(w.key,wasBoss);
-if(wasBoss) setTimeout(spawnMega,90000);
-else setTimeout(()=>{
-const ks2=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
-let ch=ks2[0],ac2=0;
-const tot2=ks2.reduce((sum,k)=>sum+DINOS[k].sp, 0);
-const r2=Math.random()*tot2;
-for(const k of ks2){ac2+=DINOS[k].sp;if(r2<ac2){ch=k;break;}}
-for(let att=0;att<20;att++){
-const tx2=Math.floor(Math.random()*WS),ty2=Math.floor(Math.random()*WS);
-if(worldMap[ty2]&&worldMap[ty2][tx2]!==2){
-G.wilds.push({key:ch,x:tx2*TS+TS/2,y:ty2*TS+TS/2,anim:0,mt:60,dx:0,dy:0,face:1,isBoss:false});
-break;
-}
-}
-},5000);
-break;
+    const wasBoss=w.isBoss;
+    G.wilds.splice(i,1);
+    if (G.coop.partnerId) {
+        G.coop.engageTick = G.tick;
+        sendTo(G.coop.partnerId, { type: 'coop_battle_start', target: G.coop.partnerId, ek: w.key, isBoss: wasBoss, stats: getMyBattleStats() });
+        startCoopBattle(w.key, wasBoss, true, getMyBattleStats());
+    } else {
+        startBattle(w.key,wasBoss);
+    }
+    if(wasBoss) setTimeout(spawnMega,90000);
+    else setTimeout(()=>{
+        const ks2=Object.keys(DINOS).filter(k=>DINOS[k].lvl===G.level && DINOS[k].rarity!=='Boss');
+        let ch=ks2[0],ac2=0;
+        const tot2=ks2.reduce((sum,k)=>sum+DINOS[k].sp, 0);
+        const r2=Math.random()*tot2;
+        for(const k of ks2){ac2+=DINOS[k].sp;if(r2<ac2){ch=k;break;}}
+        for(let att=0;att<20;att++){
+            const tx2=Math.floor(Math.random()*WS),ty2=Math.floor(Math.random()*WS);
+            if(worldMap[ty2]&&worldMap[ty2][tx2]!==2){
+                G.wilds.push({key:ch,x:tx2*TS+TS/2,y:ty2*TS+TS/2,anim:0,mt:60,dx:0,dy:0,face:1,isBoss:false});
+                break;
+            }
+        }
+    },5000);
+    break;
 }
 }
 }
 
-// Check PvP Distance
+// Check Close Players
 let closeId = null;
 for(let id in G.otherPlayers) {
     if(!G.isHost && G.peer && id === G.peer.id) continue;
@@ -1711,10 +2035,23 @@ if (G.pvp.reqTo && G.pvp.closeId !== G.pvp.reqTo) G.pvp.reqTo = null;
 }
 
 function updateBattle(){
-const b=G.battle;
-if(b.eshake>0) b.eshake--;
-if(b.pshake>0) b.pshake--;
-b.dnums=b.dnums.filter(dn=>{dn.life--;return dn.life>0;});
+    const b = G.battle;
+    if(b.eshake>0) b.eshake--;
+    if(b.pshake>0) b.pshake--;
+    if(b.ptshake>0) b.ptshake--;
+    b.dnums=b.dnums.filter(dn=>{dn.life--;return dn.life>0;});
+
+    // Auto-skip if dead in Co-op
+    if (b.isCoop && b.turn === (b.isP1 ? 'p1' : 'p2') && !b.anim && !b.res && G.playerHp <= 0) {
+        b.anim = true;
+        setTimeout(() => {
+            sendTo(G.coop.partnerId, { type: 'coop_action', target: G.coop.partnerId, action: 'skip' });
+            b.log.unshift(`${G.username || 'You'} is knocked out! Skipping...`); if(b.log.length>5) b.log.pop();
+            b.turn = b.turn === 'p1' ? 'p2' : 'enemy';
+            b.anim = false;
+            if (b.turn === 'enemy' && b.isP1) runCoopEnemyTurn();
+        }, 1000);
+    }
 }
 
 // ── RENDER ──
@@ -1743,6 +2080,10 @@ for (let id in G.otherPlayers) {
         drawHat(op.hat || 'bucket', sx, sy - headOff + bob - 2, 1.1);
         ctx.fillStyle='#aaddff'; ctx.font='bold 12px Courier New'; ctx.textAlign='center';
         ctx.fillText(op.name || 'Player', sx, sy - DINOS[op.dk].sz - 25);
+        if (op.coopName) {
+            ctx.fillStyle='#44aaff'; ctx.font='bold 10px Courier New'; 
+            ctx.fillText('Bonded to ' + op.coopName, sx, sy - DINOS[op.dk].sz - 40);
+        }
     }
 }
 
@@ -1786,10 +2127,12 @@ if(c === 'dev_money') {
 G.wheat += 999999;
 G.cheatsActive = true;
 addChatMessage('System', "Cheat Activated: +999,999 Buckets");
+syncCoopData();
 } else if(c === 'dev_dinos') {
 for(let k in DINOS) G.discovered[k] = true;
 G.cheatsActive = true;
 addChatMessage('System', "Cheat Activated: All Dinos Unlocked");
+syncCoopData();
 } else if(c === 'dev_god') {
 G.player.upg.hp = 99;
 G.player.upg.atk = 99;
@@ -1803,6 +2146,7 @@ generateWorld(); spawnWilds(); spawnMega(); G.playerHp = pMaxHp();
 G.volcanoTimer = 10800; G.volcanoActive = 0; G.hazards =[];
 G.cheatsActive = true;
 addChatMessage('System', "Cheat Activated: Teleported to Volcano Map");
+syncCoopData();
 }
 }
 
@@ -1909,86 +2253,109 @@ G.cam.y = Math.max(0, Math.min(WS*TS-canvas.height, G.player.y - canvas.height/2
 G.state = 'world';
 }
 
-// ── CHAT SYSTEM & FILTER ──
-function filterMessage(msg) {
-    const badWords =['fuck', 'shit', 'bitch', 'asshole', 'damn', 'crap', 'dumbass', 'nigger', 'nigga', 'cunt', 'slut', 'whore', 'faggot', 'dick', 'cock', 'pussy', 'bastard'];
-    
-    const leetMap = { '@':'a', '4':'a', '3':'e', '1':'i', '!':'i', '0':'o', '5':'s', '$':'s', '7':'t', '8':'b', '+':'t' };
-    
-    let leeted = msg.toLowerCase();
-    for (let k in leetMap) leeted = leeted.split(k).join(leetMap[k]);
-    
-    let testStrClean = leeted.replace(/[\s\W_]+/g, ''); 
-    
-    for (let i = 0; i < badWords.length; i++) {
-        if (testStrClean.includes(badWords[i])) return "****"; 
-    }
-    return msg; 
+// ── MULTIPLAYER NETWORK ROUTING ──
+function sendTo(target, data) {
+    try {
+        if (G.isHost) {
+            if (target === 'host') handleGameMsg(data); 
+            else if (G.conns[target] && G.conns[target].open) G.conns[target].send(data);
+        } else {
+            data.target = target;
+            if (G.conns['host'] && G.conns['host'].open) G.conns['host'].send(data);
+        }
+    } catch(e) { console.error("Send Error:", e); }
 }
 
-let chatFadeTimer;
-function wakeChat() {
-    const msgs = document.getElementById('chatMessages');
-    msgs.style.opacity = '1';
-    clearTimeout(chatFadeTimer);
-    chatFadeTimer = setTimeout(() => {
-        if(document.getElementById('chatBox').style.display === 'none') msgs.style.opacity = '0';
-    }, 8000);
-}
+function handleGameMsg(data) {
+    if (data.type === 'pvp_request') {
+        if (G.state === 'world' && G.pvp.cd === 0 && G.encCd <= 0 && !G.pvp.reqFrom && !G.coop.partnerId) {
+            G.pvp.reqFrom = data.sender;
+            G.pvp.reqFromName = data.name;
+            G.pvp.reqFromStats = data.stats;
+        } else {
+            sendTo(data.sender, { type: 'pvp_reply', target: data.sender, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
+        }
+    } else if (data.type === 'pvp_reply') {
+        if (data.accept && G.pvp.reqTo === data.sender) {
+            startPvPBattle(data.sender, data.stats, true); 
+            G.pvp.reqTo = null;
+        } else {
+            if (G.pvp.reqTo === data.sender) addChatMessage('System', data.name + ' denied PvP.');
+            G.pvp.reqTo = null;
+            G.pvp.cd = 1800; // 30s CD
+        }
+    } else if (data.type === 'pvp_action') {
+        if (G.state === 'battle' && G.battle.isPvP && G.battle.opId === data.sender) {
+            const b = G.battle;
+            if (data.action === 'attack') {
+                b.anim = true;
+                const dmg = data.dmg;
+                if (b.php_shield >= dmg) { b.php_shield -= dmg; }
+                else { b.php -= (dmg - b.php_shield); b.php_shield = 0; }
+                G.playerHp = Math.max(0, b.php);
+                G.playerShield = b.php_shield;
+                G.lastDamageTick = G.tick;
 
-function addChatMessage(sender, msg) {
-    const safeMsg = filterMessage(msg);
-    const msgEl = document.createElement('div');
-    msgEl.className = 'chat-msg';
-    msgEl.style.color = sender === (G.username || 'You') ? '#aaddff' : (sender === 'System' ? '#ffff55' : '#ffddaa');
-    msgEl.innerText = sender + ': ' + safeMsg;
+                b.pshake = 18;
+                b.dnums.push({x:canvas.width*0.28, y:canvas.height*0.52, val:dmg, col:'#ff8844', life:60});
+                b.log.unshift(`${b.ename} attacks for ${dmg}!`); if(b.log.length>5) b.log.pop();
+                spawnParticles(canvas.width*0.28, canvas.height*0.52, '#ff8844', 6);
 
-    const chatMsgs = document.getElementById('chatMessages');
-    chatMsgs.appendChild(msgEl);
-    if (chatMsgs.children.length > 50) chatMsgs.firstChild.remove();
-    chatMsgs.scrollTop = chatMsgs.scrollHeight;
-
-    wakeChat();
-}
-
-const chatBox = document.getElementById('chatBox');
-const chatInp = document.getElementById('chatInp');
-const chatSend = document.getElementById('chatSend');
-
-function closeChatUI() {
-    chatInp.value = '';
-    chatBox.style.display = 'none'; 
-    document.getElementById('chatMessages').style.pointerEvents = 'none';
-    chatInp.blur();
-    wakeChat();
-}
-
-function sendChatUI() {
-    const msg = chatInp.value;
-    if(msg && msg.trim() !== '') {
-        const safeName = G.username || 'You';
-        addChatMessage(safeName, msg); 
-        
-        try {
-            if(G.isHost) {
-                for(let id in G.conns) {
-                    if(G.conns[id] && G.conns[id].open) G.conns[id].send({ type: 'chat', sender: safeName, msg: msg });
-                }
-            } else {
-                if(G.conns['host'] && G.conns['host'].open) G.conns['host'].send({ type: 'chat', sender: safeName, msg: msg }); 
+                setTimeout(()=>{
+                    b.anim = false;
+                    if(b.php <= 0){
+                        b.log.unshift(`💀 You lost the friendly match!`);
+                        b.res = 'lose';
+                    } else {
+                        b.turn = 'player';
+                    }
+                }, 420);
+            } else if (data.action === 'run') {
+                b.log.unshift(`${b.ename} fled the match!`);
+                b.res = 'win';
             }
-        } catch(e) { console.error("Chat send error:", e); }
+        }
+    } else if (data.type === 'coop_req') {
+        if (G.state === 'world' && !G.coop.partnerId && !G.coop.reqFrom) {
+            G.coop.reqFrom = data.sender;
+            G.coop.reqFromName = data.name;
+        } else {
+            sendTo(data.sender, { type: 'coop_reply', target: data.sender, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
+        }
+    } else if (data.type === 'coop_reply') {
+        if (data.accept && G.coop.reqTo === data.sender) {
+            formCoopBond(data.sender, data.name);
+        } else {
+            if (G.coop.reqTo === data.sender) addChatMessage('System', data.name + ' denied Co-op.');
+            G.coop.reqTo = null;
+            G.coop.step = 0;
+        }
+    } else if (data.type === 'coop_battle_start') {
+        if (G.tick - G.coop.engageTick < 30) {
+            G.coop.msgText = "Collision: Both attacked a dino!";
+            G.coop.msgTimer = 180;
+            sendTo(G.coop.partnerId, { type: 'coop_battle_abort', target: G.coop.partnerId });
+            G.state = 'world'; G.encCd = 100;
+        } else {
+            startCoopBattle(data.ek, data.isBoss, false, data.stats);
+        }
+    } else if (data.type === 'coop_battle_abort') {
+        G.coop.msgText = "Collision: Both attacked a dino!";
+        G.coop.msgTimer = 180;
+        G.state = 'world'; G.encCd = 100;
+    } else if (data.type === 'coop_action') {
+        executeCoopAction(data);
+    } else if (data.type === 'coop_enemy_turn') {
+        applyCoopEnemyTurn(data.t, data.dmg);
+    } else if (data.type === 'coop_sync') {
+        if(data.wheat > G.wheat) G.wheat = data.wheat;
+        if(data.level > G.level) { G.level = data.level; generateWorld(); spawnWilds(); spawnMega(); }
+        for (let k in data.disc) G.discovered[k] = true;
+    } else if (data.type === 'coop_leave') {
+        addChatMessage('System', 'Co-op partner broke the bond.');
+        breakCoopBond();
     }
-    closeChatUI();
 }
-
-chatSend.addEventListener('click', sendChatUI);
-chatInp.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendChatUI(); });
-chatBox.addEventListener('touchstart', e => e.stopPropagation());
-chatBox.addEventListener('touchmove', e => e.stopPropagation());
-chatBox.addEventListener('click', e => e.stopPropagation());
-document.getElementById('chatContainer').addEventListener('touchstart', e => e.stopPropagation());
-document.getElementById('chatContainer').addEventListener('touchmove', e => e.stopPropagation());
 
 
 // ── MULTIPLAYER MODAL UI ──
@@ -2030,92 +2397,6 @@ mpModal.addEventListener('touchmove', e => e.stopPropagation());
 mpModal.addEventListener('click', e => e.stopPropagation());
 
 
-// ── MULTIPLAYER LOGIC & PVP (HOST & PARTY SYSTEM) ──
-function leaveGame() {
-    if(G.sessionTimer) { clearTimeout(G.sessionTimer); G.sessionTimer = null; }
-    if(syncInterval) { clearInterval(syncInterval); syncInterval = null; }
-    
-    for(let id in G.conns) { if(G.conns[id]) G.conns[id].close(); }
-    G.conns = {};
-    if(G.peer) { G.peer.destroy(); G.peer = null; }
-    
-    G.peerId = null;
-    G.otherPlayers = {};
-    G.isHost = false;
-    addChatMessage('System', 'Disconnected from room.');
-}
-
-function startSessionTimer() {
-    if(G.sessionTimer) clearTimeout(G.sessionTimer);
-    G.sessionTimer = setTimeout(() => {
-        addChatMessage('System', '1-hour limit reached. Disconnecting.');
-        leaveGame();
-    }, 3600000); 
-}
-
-function sendPvP(data) {
-    try {
-        if (G.isHost) {
-            if (data.target === 'host') handlePvPMessage(data); 
-            else if (G.conns[data.target] && G.conns[data.target].open) G.conns[data.target].send(data);
-        } else {
-            if (G.conns['host'] && G.conns['host'].open) G.conns['host'].send(data);
-        }
-    } catch(e) { console.error("PvP Send Error:", e); }
-}
-
-function handlePvPMessage(data) {
-    if (data.type === 'pvp_request') {
-        if (G.state === 'world' && G.pvp.cd === 0 && G.encCd <= 0) {
-            G.pvp.reqFrom = data.sender;
-            G.pvp.reqFromName = data.name;
-            G.pvp.reqFromStats = data.stats;
-        } else {
-            sendPvP({ type: 'pvp_reply', target: data.sender, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
-        }
-    } else if (data.type === 'pvp_reply') {
-        if (data.accept && G.pvp.reqTo === data.sender) {
-            startPvPBattle(data.sender, data.stats, true); 
-            G.pvp.reqTo = null;
-        } else {
-            if (G.pvp.reqTo === data.sender) addChatMessage('System', data.name + ' denied PvP.');
-            G.pvp.reqTo = null;
-            G.pvp.cd = 1800; // 30s CD
-        }
-    } else if (data.type === 'pvp_action') {
-        if (G.state === 'battle' && G.battle.isPvP && G.battle.opId === data.sender) {
-            const b = G.battle;
-            if (data.action === 'attack') {
-                b.anim = true;
-                const dmg = data.dmg;
-                if (b.php_shield >= dmg) { b.php_shield -= dmg; }
-                else { b.php -= (dmg - b.php_shield); b.php_shield = 0; }
-                G.playerHp = Math.max(0, b.php);
-                G.playerShield = b.php_shield;
-                G.lastDamageTick = G.tick; // Reset passive heal
-
-                b.pshake = 18;
-                b.dnums.push({x:canvas.width*0.28, y:canvas.height*0.52, val:dmg, col:'#ff8844', life:60});
-                b.log.unshift(`${b.ename} attacks for ${dmg}!`); if(b.log.length>5) b.log.pop();
-                spawnParticles(canvas.width*0.28, canvas.height*0.52, '#ff8844', 6);
-
-                setTimeout(()=>{
-                    b.anim = false;
-                    if(b.php <= 0){
-                        b.log.unshift(`💀 You lost the friendly match!`);
-                        b.res = 'lose';
-                    } else {
-                        b.turn = 'player';
-                    }
-                }, 420);
-            } else if (data.action === 'run') {
-                b.log.unshift(`${b.ename} fled the match!`);
-                b.res = 'win';
-            }
-        }
-    }
-}
-
 function hostGame() {
     if(G.peer) return;
 
@@ -2141,8 +2422,8 @@ function hostGame() {
                     for (let id in G.conns) {
                         if (id !== c.peer && G.conns[id].open) G.conns[id].send({ type: 'chat', sender: data.sender, msg: data.msg });
                     }
-                } else if (data.type.startsWith('pvp_')) {
-                    if (data.target === 'host') handlePvPMessage(data);
+                } else if (data.type.startsWith('pvp_') || data.type.startsWith('coop_')) {
+                    if (data.target === 'host') handleGameMsg(data);
                     else if (G.conns[data.target] && G.conns[data.target].open) G.conns[data.target].send(data);
                 }
             });
@@ -2152,6 +2433,7 @@ function hostGame() {
                     G.battle.log.unshift("Opponent disconnected!");
                     G.battle.res = 'win';
                 }
+                if (G.coop.partnerId === c.peer) breakCoopBond();
                 delete G.otherPlayers[c.peer];
                 delete G.conns[c.peer];
                 addChatMessage('System', 'A player left the party.');
@@ -2181,12 +2463,12 @@ function joinGame(pid) {
             c.on('data', data => {
                 if (data.type === 'sync') G.otherPlayers = data.players; 
                 else if (data.type === 'chat') addChatMessage(data.sender, data.msg); 
-                else if (data.type.startsWith('pvp_')) handlePvPMessage(data);
+                else if (data.type.startsWith('pvp_') || data.type.startsWith('coop_')) handleGameMsg(data);
             });
 
             c.on('close', () => {
                 addChatMessage('System', 'Host closed the room.');
-                if (G.state === 'battle' && G.battle.isPvP) G.state = 'world';
+                if (G.state === 'battle') G.state = 'world';
                 leaveGame(); 
             });
         });
@@ -2203,7 +2485,9 @@ function startSyncLoop() {
             const myData = {
                 x: G.player.x, y: G.player.y, dk: G.player.dk, 
                 face: G.player.face, anim: G.player.anim, 
-                hat: G.player.hat, oc: G.player.oc, name: G.username
+                hat: G.player.hat, oc: G.player.oc, name: G.username,
+                hp: G.playerHp, mhp: pMaxHp(), sh: G.playerShield,
+                coopName: G.coop.partnerName
             };
 
             if (G.isHost) {
