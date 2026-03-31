@@ -815,13 +815,13 @@ if (G.pvp.reqFrom) {
     ctx.fillText(G.pvp.reqFromName + ' requested PvP!', W/2, ry + 25);
     
     btn(rx + 20, ry + 45, 110, 26, 'Deny', '#cc2222', '#fff', () => {
-        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, accept: false, name: G.username || 'Player' });
+        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
         G.pvp.reqFrom = null;
         G.pvp.cd = 300;
     }, '✖');
     
     btn(rx + 150, ry + 45, 110, 26, 'Accept', '#22cc22', '#fff', () => {
-        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, accept: true, stats: getMyBattleStats() });
+        sendPvP({ type: 'pvp_reply', target: G.pvp.reqFrom, sender: (G.isHost ? 'host' : G.peer.id), accept: true, stats: getMyBattleStats() });
         startPvPBattle(G.pvp.reqFrom, G.pvp.reqFromStats, false); 
         G.pvp.reqFrom = null;
     }, '✔');
@@ -1991,7 +1991,7 @@ function handlePvPMessage(data) {
             G.pvp.reqFromName = data.name;
             G.pvp.reqFromStats = data.stats;
         } else {
-            sendPvP({ type: 'pvp_reply', target: data.sender, accept: false, name: G.username || 'Player' });
+            sendPvP({ type: 'pvp_reply', target: data.sender, sender: (G.isHost ? 'host' : G.peer.id), accept: false, name: G.username || 'Player' });
         }
     } else if (data.type === 'pvp_reply') {
         if (data.accept && G.pvp.reqTo === data.sender) {
