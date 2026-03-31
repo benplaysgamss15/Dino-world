@@ -2034,26 +2034,6 @@ if (G.pvp.reqFrom && G.pvp.closeId !== G.pvp.reqFrom) G.pvp.reqFrom = null;
 if (G.pvp.reqTo && G.pvp.closeId !== G.pvp.reqTo) G.pvp.reqTo = null; 
 }
 
-function updateBattle(){
-    const b = G.battle;
-    if(b.eshake>0) b.eshake--;
-    if(b.pshake>0) b.pshake--;
-    if(b.ptshake>0) b.ptshake--;
-    b.dnums=b.dnums.filter(dn=>{dn.life--;return dn.life>0;});
-
-    // Auto-skip if dead in Co-op
-    if (b.isCoop && b.turn === (b.isP1 ? 'p1' : 'p2') && !b.anim && !b.res && G.playerHp <= 0) {
-        b.anim = true;
-        setTimeout(() => {
-            sendTo(G.coop.partnerId, { type: 'coop_action', target: G.coop.partnerId, action: 'skip' });
-            b.log.unshift(`${G.username || 'You'} is knocked out! Skipping...`); if(b.log.length>5) b.log.pop();
-            b.turn = b.turn === 'p1' ? 'p2' : 'enemy';
-            b.anim = false;
-            if (b.turn === 'enemy' && b.isP1) runCoopEnemyTurn();
-        }, 1000);
-    }
-}
-
 // ── RENDER ──
 function render(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -2502,6 +2482,75 @@ function startSyncLoop() {
         } catch(e) {}
     }, 100);
 }
+
+// ── MISSING CHAT & MULTIPLAYER CLEANUP FUNCTIONS ──
+function leaveGame() {
+    if (G.peer) G.peer.destroy();
+    G.peer = null;
+    G.isHost = false;
+    G.peerId = null;
+    G.conns = {};
+    G.otherPlayers = {};
+    if (syncInterval) clearInterval(syncInterval);
+    addChatMessage('System', 'Disconnected from room.');
+    G.state = 'world';
+}
+
+function addChatMessage(sender, msg) {
+    const cm = document.getElementById('chatMessages');
+    if (!cm) return;
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<span style="color:${sender==='System'?'#ffaa00':'#aaddff'}">[${sender}]</span> ${msg}`;
+    cm.appendChild(div);
+    cm.scrollTop = cm.scrollHeight;
+    wakeChat();
+}
+
+let chatSleepTimer = null;
+function wakeChat() {
+    const cm = document.getElementById('chatMessages');
+    if (!cm) return;
+    cm.style.opacity = 1;
+    if (chatSleepTimer) clearTimeout(chatSleepTimer);
+    chatSleepTimer = setTimeout(() => {
+        if (document.getElementById('chatBox').style.display !== 'flex') {
+            cm.style.opacity = 0;
+        }
+    }, 5000);
+}
+
+function closeChatUI() {
+    document.getElementById('chatBox').style.display = 'none';
+    document.getElementById('chatMessages').style.pointerEvents = 'none';
+    wakeChat();
+}
+
+function startSessionTimer() {
+    if (G.sessionTimer) clearInterval(G.sessionTimer);
+    G.sessionTimer = setInterval(() => {}, 1000);
+}
+
+document.getElementById('chatSend').addEventListener('click', () => {
+    const inp = document.getElementById('chatInp');
+    const msg = inp.value.trim();
+    if (msg) {
+        addChatMessage(G.username || 'Player', msg);
+        if (G.isHost) {
+            for (let id in G.conns) {
+                if (G.conns[id] && G.conns[id].open) G.conns[id].send({type: 'chat', sender: G.username || 'Player', msg});
+            }
+        } else {
+            if (G.conns['host'] && G.conns['host'].open) G.conns['host'].send({type: 'chat', sender: G.username || 'Player', msg});
+        }
+        inp.value = '';
+    }
+    closeChatUI();
+});
+
+document.getElementById('chatInp').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('chatSend').click();
+});
 
 function loop(){update();render();requestAnimationFrame(loop);}
 loop();
