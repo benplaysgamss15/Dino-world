@@ -69,7 +69,19 @@ const TS = 48;
 const WS = 160;
 const LERP = 0.1;
 const RARITY_COLOR = {Common:'#aaaaaa',Rare:'#4488ff',Epic:'#cc44ff',Legendary:'#ffaa00',Boss:'#ff3333'};
-const R_MULT = {Common: 1, Rare: 1.25, Epic: 1.5, Legendary: 1.85, Boss: 2.5}; // Scaling Multiplier
+const R_MULT = {Common: 1, Rare: 1.25, Epic: 1.5, Legendary: 1.85, Boss: 1.5}; // Scaling Multiplier
+
+// ── CUSTOM COLORS PALETTE ──
+const PALETTES =[
+    { id:'blue', name:'Blue', oc:{body:'#40c4ff',legs:'#1a347a',head:'#ffd700',neck:'#ffd700',tail:'#2a5acc'} },
+    { id:'red', name:'Red', oc:{body:'#ff4040',legs:'#7a1a1a',head:'#ffd700',neck:'#ffd700',tail:'#cc2a2a'} },
+    { id:'green', name:'Green', oc:{body:'#40ff40',legs:'#1a7a1a',head:'#ffd700',neck:'#ffd700',tail:'#2acc2a'} },
+    { id:'purple', name:'Purple', oc:{body:'#c440ff',legs:'#4a1a7a',head:'#ffd700',neck:'#ffd700',tail:'#9a2acc'} },
+    { id:'dark', name:'Dark', oc:{body:'#444444',legs:'#111111',head:'#aa0000',neck:'#aa0000',tail:'#222222'} }
+];
+function getOC(cId) {
+    return PALETTES.find(p=>p.id===cId)?.oc || PALETTES[0].oc;
+}
 
 const DINOS = {
 // ── LEVEL 1 DINOS ──
@@ -258,8 +270,8 @@ else if(t===4) tileClr[y][x]=VRED[Math.abs(x*7+y*3)%VRED.length];
 generateWorld();
 
 function pDino(){ return DINOS[G.player.dk]; }
-function pMaxHp(){ return Math.floor((pDino().hp + G.player.upg.hp*32) * R_MULT[pDino().rarity]); }
-function pAtk(){ return Math.floor((pDino().atk + G.player.upg.atk*4) * R_MULT[pDino().rarity]); }
+function pMaxHp(){ return Math.floor((pDino().hp + G.player.upg.hp*28) * R_MULT[pDino().rarity]); }
+function pAtk(){ return Math.floor((pDino().atk + G.player.upg.atk*5) * R_MULT[pDino().rarity]); }
 function pSpd(){ return pDino().spd + G.player.upg.spd*0.5; }
 
 // ── HELPERS ──
@@ -1211,7 +1223,7 @@ if(G.swapCd>0) {
     addChatMessage('System', `Cooldown! Wait 2s to switch.`);
     return;
 }
-const oldHpPct = G.playerHp / pMaxHp();
+const oldHpPct = Math.min(1, G.playerHp / pMaxHp());
 G.player.dk=key;
 G.playerHp = Math.max(1, Math.floor(pMaxHp() * oldHpPct));
 G.playerShield = Math.min(G.playerShield, Math.floor(pMaxHp() * 0.4));
@@ -1253,18 +1265,18 @@ ctx.fillText('🛒 DINO SHOP',W/2,26);ctx.shadowBlur=0;
 ctx.fillStyle='#aaddff';ctx.font='bold 18px Courier New';ctx.textAlign='left';ctx.textBaseline='middle';
 ctx.fillText(`🪣 ${G.wheat}`,16,26);
 const upgs=[
-{k:'hp', label:'HP Boost', desc:'+32 Max HP', icon:'❤️', base:25,col:'#aa2222'},
-{k:'atk',label:'Atk Power', desc:'+4 Attack', icon:'⚔️', base:30,col:'#aa6622'},
-{k:'spd',label:'Speed Up', desc:'+0.5 Speed', icon:'⚡', base:20,col:'#2244aa'}
+{k:'hp', label:'HP Boost', desc:'+28 Max HP', icon:'❤️', base:25,col:'#aa2222', max:35},
+{k:'atk',label:'Atk Power', desc:'+5 Attack', icon:'⚔️', base:30,col:'#aa6622', max:30},
+{k:'spd',label:'Speed Up', desc:'+0.5 Speed', icon:'⚡', base:20,col:'#2244aa', max:25}
 ];
 const cw2=Math.min(240,Math.floor((W-60)/3));
 const ch=240;
 const tw=upgs.length*cw2+(upgs.length-1)*18;
 const sx2=(W-tw)/2;
-const maxLv = 50;
 
 upgs.forEach((upg,i)=>{
 const lv=G.player.upg[upg.k];
+const maxLv=upg.max;
 const maxed=lv>=maxLv;
 const cost=upg.base+lv*15;
 const can=!maxed&&G.wheat>=cost;
@@ -1286,7 +1298,7 @@ maxed?'#ffaa00':can?'#fff':'#665',
 ()=>{
 if(!maxed&&G.wheat>=cost){
 G.wheat-=cost;G.player.upg[upg.k]++;
-if(upg.k==='hp') G.playerHp += Math.floor(32 * R_MULT[pDino().rarity]);
+if(upg.k==='hp') G.playerHp += Math.floor(28 * R_MULT[pDino().rarity]);
 spawnParticles(x+cw2/2,y+175,'#55ccff',10);
 }
 });
@@ -1397,7 +1409,7 @@ ctx.fillText('✓ EQUIPPED', x + cw/2, y + 88);
 });
 
 // Color Selection Limbs
-const parts = ['body', 'head', 'legs', 'neck', 'tail'];
+const parts =['body', 'head', 'legs', 'neck', 'tail'];
 if(!G.custPart) G.custPart = 'body';
 
 const CUST_COLS =[
